@@ -1,12 +1,10 @@
 import React from "react";
-import Hero from "../components/Hero";
-import Button from "../components/Button";
+import CTA from "../components/CTA";
 
 const Home = () => {
   return (
     <div>
-      <Hero />
-      <Button />
+      <CTA />
     </div>
   );
 };
