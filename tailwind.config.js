@@ -7,8 +7,8 @@ module.exports = {
         lota: ["Lota Grotesque", "sans-serif"],
       },
       colors: {
-        primary: "#45d345",
-        secondary: "#0063ff",
+        primary: "#1E90FF",
+        secondary: "#FF8C00",
       },
     },
   },

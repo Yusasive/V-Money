@@ -4,7 +4,7 @@ import CTA from "../components/CTA";
 const Home = () => {
   return (
     <div>
-      <CTA />
+      <CTA />   
     </div>
   );
 };
