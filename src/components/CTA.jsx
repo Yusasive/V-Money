@@ -23,14 +23,14 @@ const itemVariants = {
 const CTA = () => {
   return (
     <motion.div
-      className="bg-black text-white dark:text-black dark:bg-white px-4 lg:px-16 space-y-6 py-20 lg:mx-auto mt-20"
+      className="bg-black text-white dark:text-black dark:bg-white px-4 lg:px-16 space-y-6 py-14 lg:mx-auto mt-20"
       variants={containerVariants}
       initial="hidden"
       animate="visible">
       <motion.h1
-      className="text-2xl lg:text-[54px] text-[#30333b] text-center font-bold font-lota leading-tight lg:px-40"
+        className="text-2xl lg:text-[54px] text-[#30333b] text-center font-bold font-lota leading-tight lg:px-40"
         variants={itemVariants}>
-        Position your business for success with VMoney.
+        Position your business for success with Vmonie.
       </motion.h1>
       <motion.p
         className="text-base text-center font-semibold font-lota"
