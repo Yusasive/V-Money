@@ -41,14 +41,15 @@ const Main3 = () => {
         initial="hidden"
         animate="visible">
         <motion.h1
-          className="text-4xl font-lota font-bold"
+          className="text-[40px] font-lota font-bold leading-tight"
           variants={itemVariant}>
-          Receive payment with Byte POS.
+          Receive payment with Vmonie POS.
         </motion.h1>
         <motion.p
           className="text-sm font-lota font-medium text-gray-500"
           variants={itemVariant}>
-         Quickly accept visa and Mastercard payment from your customers, with a specially designed device for your business.
+          Quickly accept visa and Mastercard payment from your customers, with a
+          specially designed device for your business.
         </motion.p>
         <motion.div className="pt-4" variants={itemVariant}>
           <Link

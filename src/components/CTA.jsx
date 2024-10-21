@@ -23,7 +23,7 @@ const itemVariants = {
 const CTA = () => {
   return (
     <motion.div
-      className="bg-black text-white dark:text-black dark:bg-white px-4 lg:px-16 space-y-6 py-14 lg:mx-auto mt-20"
+      className="bg-black text-white dark:text-black dark:bg-white px-4 lg:px-16 space-y-6 py-14 lg:mx-auto"
       variants={containerVariants}
       initial="hidden"
       animate="visible">
@@ -41,7 +41,7 @@ const CTA = () => {
       <motion.p
         className="text-base text-center font-normal text-gray-600 font-lota lg:px-40"
         variants={itemVariants}>
-        Already use Byte to grow and scale their business, get access to POS
+        Already use Vmonie to grow and scale their business, get access to POS
         terminals, business accounts, business tools and access to top tier
         loans to grow your business.
       </motion.p>

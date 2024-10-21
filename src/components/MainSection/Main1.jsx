@@ -32,7 +32,7 @@ const Main1 = () => {
         className="flex flex-col lg:flex-row lg:space-x-2 space-y-3 lg:space-y-0"
         variants={itemVariant}>
         <Link
-          className="text-base font-medium border-primary border-[1px] py-3 px-7 text-black bg-primary font-lota rounded-2xl"
+          className="text-base text-white font-medium border-primary border-[1px] py-3 px-7 bg-primary font-lota rounded-2xl"
           to="/">
           Business account
         </Link>

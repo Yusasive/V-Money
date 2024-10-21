@@ -30,7 +30,7 @@ const Main4 = () => {
         initial="hidden"
         animate="visible">
         <motion.h1
-          className="text-4xl font-lota font-bold"
+          className="text-[40px] font-lota font-bold leading-tight"
           variants={itemVariant}>
           Manage multiple outlets in one go.
         </motion.h1>
