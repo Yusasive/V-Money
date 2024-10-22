@@ -13,11 +13,13 @@ const Navbar = () => {
     <div className="sticky top-0 z-50 bg-white bg-opacity-5 backdrop-blur-lg shadow-lg font-averta navbar">
       <div className="flex items-center justify-between px-4 lg:px-16  py-2">
         <div>
-          <img
-            src="https://res.cloudinary.com/ddxssowqb/image/upload/v1728750826/IMG-20241008-WA0063-removebg-preview_fskvzw.png"
-            alt="Push Eat"
-            className="w-[117px] lg:w-[150px] h-auto"
-          />
+          <Link to="/">
+            <img
+              src="https://res.cloudinary.com/ddxssowqb/image/upload/v1728750826/IMG-20241008-WA0063-removebg-preview_fskvzw.png"
+              alt="Push Eat"
+              className="w-[117px] lg:w-[150px] h-auto"
+            />
+          </Link>
         </div>
         <div className="flex items-center space-x-4">
           <div className="hidden md:flex space-x-4">
@@ -32,7 +34,7 @@ const Navbar = () => {
                 Product
               </NavLink>
               <NavLink
-                to="/resouces"
+                to="/loans"
                 className={({ isActive }) =>
                   isActive
                     ? "text-primary text-lg font-semibold font-lota"
@@ -97,13 +99,13 @@ const Navbar = () => {
             to="/"
             className={({ isActive }) =>
               isActive
-                 ? "text-primary text-start text-base font-semibold font-lota"
+                ? "text-primary text-start text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
             }>
             PRODUCT
           </NavLink>
           <NavLink
-            to="/resources"
+            to="/loans"
             className={({ isActive }) =>
               isActive
                 ? "text-primary text-start text-base font-semibold font-lota"
@@ -124,14 +126,13 @@ const Navbar = () => {
             to="/pricing"
             className={({ isActive }) =>
               isActive
-                 ? "text-primary text-base font-semibold font-lota"
+                ? "text-primary text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
             }>
             PRICING
           </NavLink>
         </div>
       </motion.div>
-      {/* Mobile Social Links Row */}
       {isOpen && (
         <motion.div
           className="flexf flex-col space-y-5 bg-white items-center bg-opacity-10 backdrop-blur-md p-4 rounded-md mt-2 flex md:hidden px-16 justify-center"

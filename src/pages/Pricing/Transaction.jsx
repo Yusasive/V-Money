@@ -29,7 +29,7 @@ const cardData = [
     amount: "₦0.00",
     title: "Bills payment",
     description:
-      "You don’t pay us we pay you, enjoy up to 10% in commission when you pay bills with Byte.",
+      "You don’t pay us we pay you, enjoy up to 10% in commission when you pay bills with Vmonie.",
   },
 ];
 
@@ -38,7 +38,7 @@ const Transaction = () => {
     <div className="px-4 lg:px-48 py-20 grid grid-cols-1 md:grid-cols-2 gap-10 bg-[#d6e3f0]">
       {cardData.map((card) => (
         <div key={card.id} className="lg:pr-20">
-          <h2 className="text-[54px] text-black font-bold font-lota">{card.amount}</h2>
+          <h2 className="text-[54px] text-gray-600 font-bold font-lota">{card.amount}</h2>
           <h3 className="text-2xl text-primary font-medium font-lota">{card.title}</h3>
           <p className="text-base text-black font-normal font-lota ">{card.description}</p>
         </div>

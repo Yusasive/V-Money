@@ -6,10 +6,12 @@ import Main3 from "../components/MainSection/Main3";
 import Main4 from "../components/MainSection/Main4";
 import Suite from "../components/suite/Suite";
 import Credit from "../components/Credit/Credit";
+import CategoryCarousel from "../components/Slides/CategoryCarousel";
 const Home = () => {
   return (
     <div>
       <CTA />
+      <CategoryCarousel />
       <Main1 />
       <Main2 />
       <Main3 />
