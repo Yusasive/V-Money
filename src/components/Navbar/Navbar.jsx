@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { IoMdMenu, IoMdClose } from "react-icons/io";
+import Logo from "../../assets/logo.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,8 +16,8 @@ const Navbar = () => {
         <div>
           <Link to="/">
             <img
-              src="https://res.cloudinary.com/ddxssowqb/image/upload/v1728750826/IMG-20241008-WA0063-removebg-preview_fskvzw.png"
-              alt="Push Eat"
+              src={Logo}
+              alt="Vmonie"
               className="w-[117px] lg:w-[150px] h-auto"
             />
           </Link>
@@ -85,16 +86,13 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Desktop Navigation Links (Visible only on Desktop) */}
-
-      {/* Mobile Dropdown Menu */}
+  
       <motion.div
         className={`md:hidden ${isOpen ? "block" : "hidden"} p-4`}
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: isOpen ? 1 : 0, y: isOpen ? 0 : -20 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}>
         <div className="flex flex-col space-y-4 items-center justify-center">
-          {/* Navbar Links for Mobile */}
           <NavLink
             to="/"
             className={({ isActive }) =>

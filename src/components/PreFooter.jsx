@@ -1,7 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
+// Animation Variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -21,35 +23,46 @@ const itemVariants = {
 };
 
 const PreFooter = () => {
+  // Ref to track if the component is in view
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, amount: 0.2 }); // Triggers once, when 20% of the element is in view
+
   return (
     <motion.div
+      ref={ref} // Attach ref to the motion.div
       className="bg-white text-black dark:text-white dark:bg-black px-4 lg:px-16 space-y-6 py-20 lg:mx-auto"
       variants={containerVariants}
       initial="hidden"
-      animate="visible">
+      animate={isInView ? "visible" : "hidden"} // Trigger animation based on visibility
+    >
       <motion.h1
         className="text-2xl lg:text-[54px] text-center font-bold font-lota"
-        variants={itemVariants}>
+        variants={itemVariants}
+      >
         Start scaling with Vmonie.
       </motion.h1>
       <motion.p
         className="text-lg lg:text-2xl text-center font-semibold font-lota lg:px-40"
-        variants={itemVariants}>
+        variants={itemVariants}
+      >
         Join over 1,000+ business owners who already streamline their daily
         business operations with Vmonie software.
       </motion.p>
 
       <motion.div
         className="flex flex-col lg:flex-row lg:space-x-4 space-y-4 lg:space-y-0 justify-center pt-4 lg:pt-10"
-        variants={itemVariants}>
+        variants={itemVariants}
+      >
         <Link
           className="bg-primary hover:bg-[#6871d1] text-sm font-lota font-normal text-white py-3 px-10 rounded-xl text-center"
-          to="/">
+          to="/"
+        >
           Get Started
         </Link>
         <Link
           className="bg-white hover:bg-[#eff1fa] text-sm font-lota font-normal text-primary py-3 px-10 rounded-xl text-center"
-          to="/">
+          to="/"
+        >
           Contact Sales
         </Link>
       </motion.div>

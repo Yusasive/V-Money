@@ -58,7 +58,7 @@ const CategoryCarousel = () => {
       dotListClass="custom-dot-list"
     >
       {categoryData.map((category, index) => (
-        <div key={index} className="relative group overflow-hidden rounded-lg md:mr-4">
+        <div key={index} className="relative group overflow-hidden rounded-lg mx-4 lg:mx-0 md:mr-4">
           <img
             src={category.imageUrl}
             alt={category.title}
