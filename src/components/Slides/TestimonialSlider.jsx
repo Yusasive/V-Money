@@ -30,7 +30,7 @@ const TestimonialSlider = () => {
   useEffect(() => {
     const intervalId = setInterval(() => {
       setCurrentSlide((prevSlide) => (prevSlide + 1) % testimonials.length);
-    }, 5000); 
+    }, 3000); 
 
 
     return () => clearInterval(intervalId);
@@ -53,7 +53,7 @@ const TestimonialSlider = () => {
           {testimonials.map((_, index) => (
             <span
               key={index}
-              className={`h-2 w-8 rounded-full cursor-pointer ${
+              className={`h-2 w-20 rounded-full cursor-pointer ${
                 currentSlide === index ? "bg-gray-800" : "bg-gray-300"
               }`}
               onClick={() => nextSlide(index)}
