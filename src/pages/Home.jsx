@@ -7,6 +7,7 @@ import Main4 from "../components/MainSection/Main4";
 import Suite from "../components/suite/Suite";
 import Credit from "../components/Credit/Credit";
 import CategoryCarousel from "../components/Slides/CategoryCarousel";
+import TestimonialSlider from "../components/Slides/TestimonialSlider";
 const Home = () => {
   return (
     <div>
@@ -18,6 +19,7 @@ const Home = () => {
       <Main4 />
       <Suite />
       <Credit />
+      <TestimonialSlider />
     </div>
   );
 };

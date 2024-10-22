@@ -40,7 +40,7 @@ const Credit = () => {
           <div key={index} className="flex flex-row text-left space-x-4">
             <div className="text-2xl mb-4 content-center">{feature.icon}</div>
             <div>
-              <h3 className="text-[22px] font-bold mb-2">{feature.title}</h3>
+              <h3 className="text-[22px] font-bold mb-2 text-gray-800">{feature.title}</h3>
               <p className="font-normal text-sm">{feature.description}</p>
             </div>
           </div>
