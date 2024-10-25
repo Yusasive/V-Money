@@ -18,7 +18,7 @@ const Navbar = () => {
             <img
               src={Logo}
               alt="Vmonie"
-              className="w-[117px] lg:w-[150px] h-auto"
+              className="w-[117px] lg:w-[150px] h-auto "
             />
           </Link>
         </div>
