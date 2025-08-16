@@ -3,8 +3,10 @@ import { NavLink, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { IoMdMenu, IoMdClose } from "react-icons/io";
 import Logo from "../../assets/logo.png";
+import { useLocation } from "react-router-dom";
 
 const Navbar = () => {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -31,7 +33,8 @@ const Navbar = () => {
                   isActive
                     ? "text-primary text-lg font-semibold font-lota"
                     : "text-black text-lg font-semibold font-lota hover:text-primary"
-                }>
+                }
+              >
                 Product
               </NavLink>
               <NavLink
@@ -40,7 +43,8 @@ const Navbar = () => {
                   isActive
                     ? "text-primary text-lg font-semibold font-lota"
                     : "text-black text-lg font-semibold font-lota hover:text-primary"
-                }>
+                }
+              >
                 Resources
               </NavLink>
               <NavLink
@@ -49,7 +53,8 @@ const Navbar = () => {
                   isActive
                     ? "text-primary text-lg font-semibold font-lota"
                     : "text-black text-lg font-semibold font-lota hover:text-primary"
-                }>
+                }
+              >
                 Company
               </NavLink>
               <NavLink
@@ -58,21 +63,26 @@ const Navbar = () => {
                   isActive
                     ? "text-primary text-lg font-semibold font-lota"
                     : "text-black text-lg font-semibold font-lota hover:text-primary"
-                }>
+                }
+              >
                 Pricing
               </NavLink>
             </div>
             <div className="flex flex-row lg:flex-row justify-center py-5 space-x-6">
               <Link
                 className="bg-[#eff1fa] text-primary py-3 px-6 rounded-xl text-center hover:bg-[#e4e6ee]"
-                to="/">
+                to="/"
+              >
                 Login
               </Link>
-              <Link
-                className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center"
-                to="/">
-                Start for free
-              </Link>
+              {location.pathname !== "/onboarding" && (
+                <Link
+                  className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center"
+                  to="/onboarding"
+                >
+                  Start for free
+                </Link>
+              )}
             </div>
           </div>
 
@@ -86,12 +96,12 @@ const Navbar = () => {
         </div>
       </div>
 
-  
       <motion.div
         className={`md:hidden ${isOpen ? "block" : "hidden"} p-4`}
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: isOpen ? 1 : 0, y: isOpen ? 0 : -20 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}>
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+      >
         <div className="flex flex-col space-y-4 items-center justify-center">
           <NavLink
             to="/"
@@ -99,7 +109,8 @@ const Navbar = () => {
               isActive
                 ? "text-primary text-start text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
-            }>
+            }
+          >
             PRODUCT
           </NavLink>
           <NavLink
@@ -108,7 +119,8 @@ const Navbar = () => {
               isActive
                 ? "text-primary text-start text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
-            }>
+            }
+          >
             RESOURCES
           </NavLink>
           <NavLink
@@ -117,7 +129,8 @@ const Navbar = () => {
               isActive
                 ? "text-primary  text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
-            }>
+            }
+          >
             COMPANY
           </NavLink>
           <NavLink
@@ -126,7 +139,8 @@ const Navbar = () => {
               isActive
                 ? "text-primary text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
-            }>
+            }
+          >
             PRICING
           </NavLink>
         </div>
@@ -136,17 +150,22 @@ const Navbar = () => {
           className="flexf flex-col space-y-5 bg-white items-center bg-opacity-10 backdrop-blur-md p-4 rounded-md mt-2 flex md:hidden px-16 justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}>
+          transition={{ duration: 0.5 }}
+        >
           <Link
             className="bg-[#f5c58a] text-white py-3 px-6 rounded-xl text-center w-full hover:bg-[#FF8C00]"
-            to="/">
+            to="/"
+          >
             Login
           </Link>
-          <Link
-            className="bg-primary hover:bg-[#6871d1] w-full text-white py-3 px-6 rounded-xl text-center"
-            to="/">
-            Start for free
-          </Link>
+          {location.pathname !== "/onboarding" && (
+            <Link
+              className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center"
+              to="/onboarding"
+            >
+              Start for free
+            </Link>
+          )}
         </motion.div>
       )}
     </div>

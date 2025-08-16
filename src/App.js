@@ -6,6 +6,7 @@ import Navbar from "./components/Navbar/Navbar";
 import Footer from "./pages/Footer";
 import Loans from "./pages/Loans/Loans";
 import ScrollToTop from "./ScrollToTop";
+import OnboardingForm from "./components/Navbar/OnboardingForm";
 
 const App = () => {
   return (
@@ -16,6 +17,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/loans" element={<Loans />} />
+        <Route path="/onboarding" element={<OnboardingForm />} />
       </Routes>
       <Footer />
     </Router>

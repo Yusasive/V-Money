@@ -55,7 +55,7 @@ const PreFooter = () => {
       >
         <Link
           className="bg-primary hover:bg-[#6871d1] text-sm font-lota font-normal text-white py-3 px-10 rounded-xl text-center"
-          to="/"
+          to="/onboarding"
         >
           Get Started
         </Link>
