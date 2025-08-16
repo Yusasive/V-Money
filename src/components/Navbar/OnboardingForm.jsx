@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 
 const steps = ["Documentation", "Requirements"];
 
@@ -39,8 +40,58 @@ export default function OnboardingForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Final Form Data:", formData);
-    alert("Form submitted!");
+    
+    const submitData = new FormData();
+    submitData.append('formType', 'onboarding');
+    
+    // Append text data
+    Object.keys(formData).forEach(key => {
+      if (formData[key] && typeof formData[key] !== 'object') {
+        submitData.append(key, formData[key]);
+      }
+    });
+    
+    // Append files
+    ['utilityBill', 'passport', 'businessPic', 'ninSlip'].forEach(fileField => {
+      if (formData[fileField]) {
+        submitData.append('files', formData[fileField]);
+      }
+    });
+
+    axios.post('http://localhost:5000/api/forms/submit', submitData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    .then(response => {
+      alert("Form submitted successfully!");
+      // Reset form
+      setFormData({
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        gender: "",
+        phone: "",
+        email: "",
+        address: "",
+        state: "",
+        lga: "",
+        bvn: "",
+        nin: "",
+        businessName: "",
+        businessAddress: "",
+        serialNo: "",
+        utilityBill: null,
+        passport: null,
+        businessPic: null,
+        ninSlip: null,
+      });
+      setStep(0);
+    })
+    .catch(error => {
+      console.error('Error submitting form:', error);
+      alert("Error submitting form. Please try again.");
+    });
   };
 
   return (

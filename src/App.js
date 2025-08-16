@@ -7,19 +7,29 @@ import Footer from "./pages/Footer";
 import Loans from "./pages/Loans/Loans";
 import ScrollToTop from "./ScrollToTop";
 import OnboardingForm from "./components/Navbar/OnboardingForm";
+import AdminLogin from "./pages/Admin/AdminLogin";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
 
 const App = () => {
   return (
     <Router>
-      <Navbar />
-      <ScrollToTop />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/loans" element={<Loans />} />
-        <Route path="/onboarding" element={<OnboardingForm />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
+        <Route path="*" element={
+          <>
+            <Navbar />
+            <ScrollToTop />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/loans" element={<Loans />} />
+              <Route path="/onboarding" element={<OnboardingForm />} />
+            </Routes>
+            <Footer />
+          </>
+        } />
       </Routes>
-      <Footer />
     </Router>
   );
 };
