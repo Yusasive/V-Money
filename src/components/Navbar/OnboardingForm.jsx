@@ -87,7 +87,7 @@ export default function OnboardingForm() {
                 { label: "National Identity Number", name: "nin" },
                 { label: "Business Name", name: "businessName" },
                 { label: "Business Address", name: "businessAddress" },
-                { label: "Serial Nom of Pos", name: "serialNo" },
+                { label: "Serial Number of Pos", name: "serialNo" },
               ].map((field, idx) => (
                 <div key={idx}>
                   <label className="block text-gray-700 font-medium">
@@ -145,7 +145,7 @@ export default function OnboardingForm() {
             <button
               type="button"
               onClick={prevStep}
-              className="px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400"
+              className="px-12 py-3 rounded-xl bg-gray-300 hover:bg-gray-400"
             >
               Back
             </button>
