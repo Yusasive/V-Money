@@ -1,73 +1,74 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import axios from 'axios';
-import ContentManager from './ContentManager';
-import FormSubmissions from './FormSubmissions';
-import FileUpload from './FileUpload';
+import React, { useState, useEffect } from "react";
+import { Routes, Route, NavLink, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import axios from "axios";
+import ContentManager from "./ContentManager";
+import FormSubmissions from "./FormSubmissions";
+import FileUpload from "./FileUpload";
 
 const AdminDashboard = () => {
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
     totalSubmissions: 0,
     pendingSubmissions: 0,
-    contentSections: 0
+    contentSections: 0,
   });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-      navigate('/admin/login');
-      return;
-    }
-
-    fetchUserData();
-    fetchStats();
-  }, [navigate]);
-
+  // Move fetchUserData and fetchStats above useEffect
   const fetchUserData = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
+      const token = localStorage.getItem("adminToken");
+      const response = await axios.get("http://localhost:5000/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
       });
       setUser(response.data.user);
     } catch (error) {
-      localStorage.removeItem('adminToken');
-      navigate('/admin/login');
+      localStorage.removeItem("adminToken");
+      navigate("/admin/login");
     }
   };
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem("adminToken");
       const [submissionsRes, contentRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/forms', {
-          headers: { Authorization: `Bearer ${token}` }
+        axios.get("http://localhost:5000/api/forms", {
+          headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get('http://localhost:5000/api/content', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        axios.get("http://localhost:5000/api/content", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       const pendingCount = submissionsRes.data.submissions.filter(
-        sub => sub.status === 'pending'
+        (sub) => sub.status === "pending"
       ).length;
 
       setStats({
         totalSubmissions: submissionsRes.data.total,
         pendingSubmissions: pendingCount,
-        contentSections: contentRes.data.length
+        contentSections: contentRes.data.length,
       });
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error("Error fetching stats:", error);
     }
   };
 
+  useEffect(() => {
+    const token = localStorage.getItem("adminToken");
+    if (!token) {
+      navigate("/admin/login");
+      return;
+    }
+
+    fetchUserData();
+    fetchStats();
+  }, [navigate, fetchUserData]);
+
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    navigate('/admin/login');
+    localStorage.removeItem("adminToken");
+    navigate("/admin/login");
   };
 
   if (!user) {
@@ -86,7 +87,9 @@ const AdminDashboard = () => {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900 font-lota">Vmonie Admin</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-lota">
+            Vmonie Admin
+          </h1>
           <div className="flex items-center space-x-4">
             <span className="text-gray-600">Welcome, {user.email}</span>
             <button
@@ -111,8 +114,8 @@ const AdminDashboard = () => {
                   className={({ isActive }) =>
                     `block px-4 py-2 rounded-md font-medium ${
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`
                   }
                 >
@@ -125,8 +128,8 @@ const AdminDashboard = () => {
                   className={({ isActive }) =>
                     `block px-4 py-2 rounded-md font-medium ${
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`
                   }
                 >
@@ -139,8 +142,8 @@ const AdminDashboard = () => {
                   className={({ isActive }) =>
                     `block px-4 py-2 rounded-md font-medium ${
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`
                   }
                 >
@@ -153,8 +156,8 @@ const AdminDashboard = () => {
                   className={({ isActive }) =>
                     `block px-4 py-2 rounded-md font-medium ${
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`
                   }
                 >
@@ -186,27 +189,43 @@ const DashboardHome = ({ stats }) => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <h2 className="text-3xl font-bold text-gray-900 font-lota">Dashboard Overview</h2>
-      
+      <h2 className="text-3xl font-bold text-gray-900 font-lota">
+        Dashboard Overview
+      </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-700">Total Submissions</h3>
-          <p className="text-3xl font-bold text-primary mt-2">{stats.totalSubmissions}</p>
+          <h3 className="text-lg font-semibold text-gray-700">
+            Total Submissions
+          </h3>
+          <p className="text-3xl font-bold text-primary mt-2">
+            {stats.totalSubmissions}
+          </p>
         </div>
-        
+
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-700">Pending Reviews</h3>
-          <p className="text-3xl font-bold text-orange-500 mt-2">{stats.pendingSubmissions}</p>
+          <h3 className="text-lg font-semibold text-gray-700">
+            Pending Reviews
+          </h3>
+          <p className="text-3xl font-bold text-orange-500 mt-2">
+            {stats.pendingSubmissions}
+          </p>
         </div>
-        
+
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-700">Content Sections</h3>
-          <p className="text-3xl font-bold text-green-500 mt-2">{stats.contentSections}</p>
+          <h3 className="text-lg font-semibold text-gray-700">
+            Content Sections
+          </h3>
+          <p className="text-3xl font-bold text-green-500 mt-2">
+            {stats.contentSections}
+          </p>
         </div>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">
+          Quick Actions
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <NavLink
             to="/admin/dashboard/content"
