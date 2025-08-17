@@ -3,10 +3,25 @@ import { motion } from "framer-motion";
 import axios from "axios";
 
 const ContentManager = () => {
-  const [selectedSection, setSelectedSection] = useState("hero");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalSection, setModalSection] = useState(null);
+  const [modalContent, setModalContent] = useState({});
+
+  const openEditModal = (section) => {
+    setModalSection(section);
+    setModalContent(content);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalSection(null);
+    setModalContent({});
+  };
+  const [selectedSection] = useState("hero");
   const [content, setContent] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  // Removed unused loading state
+  // Removed unused message state
 
   const sections = [
     {
@@ -49,8 +64,8 @@ const ContentManager = () => {
     },
   ];
 
-  // Move fetchContent above useEffect
-  const fetchContent = async () => {
+  // Move fetchContent above useEffect and wrap in useCallback
+  const fetchContent = React.useCallback(async () => {
     try {
       const token = localStorage.getItem("adminToken");
       const response = await axios.get(
@@ -65,368 +80,11 @@ const ContentManager = () => {
         setContent({ section: selectedSection });
       }
     }
-  };
+  }, [selectedSection]);
 
   useEffect(() => {
     fetchContent();
   }, [selectedSection, fetchContent]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
-
-    try {
-      const token = localStorage.getItem("adminToken");
-      await axios.post(
-        `http://localhost:5000/api/content/${selectedSection}`,
-        content,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setMessage("Content updated successfully!");
-    } catch (error) {
-      setMessage("Error updating content");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field, value) => {
-    setContent((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleArrayChange = (field, index, subField, value) => {
-    setContent((prev) => ({
-      ...prev,
-      [field]:
-        prev[field]?.map((item, i) =>
-          i === index ? { ...item, [subField]: value } : item
-        ) || [],
-    }));
-  };
-
-  const addArrayItem = (field, template) => {
-    setContent((prev) => ({
-      ...prev,
-      [field]: [...(prev[field] || []), template],
-    }));
-  };
-
-  const removeArrayItem = (field, index) => {
-    setContent((prev) => ({
-      ...prev,
-      [field]: prev[field]?.filter((_, i) => i !== index) || [],
-    }));
-  };
-
-  const renderField = (field) => {
-    // Removed unused variable currentSection
-
-    switch (field) {
-      case "features":
-        return (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">
-              Features
-            </label>
-            {(content.features || []).map((feature, index) => (
-              <div key={index} className="border p-4 rounded-md space-y-2">
-                <input
-                  type="text"
-                  placeholder="Feature Title"
-                  value={feature.title || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "features",
-                      index,
-                      "title",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <textarea
-                  placeholder="Feature Description"
-                  value={feature.description || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "features",
-                      index,
-                      "description",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows="3"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeArrayItem("features", index)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  Remove Feature
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                addArrayItem("features", {
-                  title: "",
-                  description: "",
-                  icon: "",
-                })
-              }
-              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-            >
-              Add Feature
-            </button>
-          </div>
-        );
-
-      case "faqs":
-        return (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">
-              FAQs
-            </label>
-            {(content.faqs || []).map((faq, index) => (
-              <div key={index} className="border p-4 rounded-md space-y-2">
-                <input
-                  type="text"
-                  placeholder="Question"
-                  value={faq.question || ""}
-                  onChange={(e) =>
-                    handleArrayChange("faqs", index, "question", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <textarea
-                  placeholder="Answer"
-                  value={faq.answer || ""}
-                  onChange={(e) =>
-                    handleArrayChange("faqs", index, "answer", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows="3"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeArrayItem("faqs", index)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  Remove FAQ
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => addArrayItem("faqs", { question: "", answer: "" })}
-              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-            >
-              Add FAQ
-            </button>
-          </div>
-        );
-
-      case "testimonials":
-        return (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">
-              Testimonials
-            </label>
-            {(content.testimonials || []).map((testimonial, index) => (
-              <div key={index} className="border p-4 rounded-md space-y-2">
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={testimonial.name || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "testimonials",
-                      index,
-                      "name",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <input
-                  type="text"
-                  placeholder="Occupation"
-                  value={testimonial.occupation || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "testimonials",
-                      index,
-                      "occupation",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <textarea
-                  placeholder="Quote"
-                  value={testimonial.quote || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "testimonials",
-                      index,
-                      "quote",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows="3"
-                />
-                <input
-                  type="url"
-                  placeholder="Image URL"
-                  value={testimonial.imageUrl || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "testimonials",
-                      index,
-                      "imageUrl",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeArrayItem("testimonials", index)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  Remove Testimonial
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                addArrayItem("testimonials", {
-                  name: "",
-                  occupation: "",
-                  quote: "",
-                  imageUrl: "",
-                })
-              }
-              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-            >
-              Add Testimonial
-            </button>
-          </div>
-        );
-
-      case "pricing":
-        return (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">
-              Pricing Items
-            </label>
-            {(content.pricing || []).map((item, index) => (
-              <div key={index} className="border p-4 rounded-md space-y-2">
-                <input
-                  type="text"
-                  placeholder="Amount"
-                  value={item.amount || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "pricing",
-                      index,
-                      "amount",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <input
-                  type="text"
-                  placeholder="Title"
-                  value={item.title || ""}
-                  onChange={(e) =>
-                    handleArrayChange("pricing", index, "title", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                <textarea
-                  placeholder="Description"
-                  value={item.description || ""}
-                  onChange={(e) =>
-                    handleArrayChange(
-                      "pricing",
-                      index,
-                      "description",
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows="3"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeArrayItem("pricing", index)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  Remove Item
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                addArrayItem("pricing", {
-                  amount: "",
-                  title: "",
-                  description: "",
-                })
-              }
-              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-            >
-              Add Pricing Item
-            </button>
-          </div>
-        );
-
-      case "description":
-        return (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              value={content[field] || ""}
-              onChange={(e) => handleInputChange(field, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              rows="4"
-            />
-          </div>
-        );
-
-      default:
-        return (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
-              {field.replace(/([A-Z])/g, " $1").trim()}
-            </label>
-            <input
-              type={
-                field.includes("Url") || field.includes("Link") ? "url" : "text"
-              }
-              value={content[field] || ""}
-              onChange={(e) => handleInputChange(field, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-        );
-    }
-  };
 
   return (
     <motion.div
@@ -438,51 +96,302 @@ const ContentManager = () => {
         Content Manager
       </h2>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Section to Edit
-          </label>
-          <select
-            value={selectedSection}
-            onChange={(e) => setSelectedSection(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          >
-            {sections.map((section) => (
-              <option key={section.id} value={section.id}>
-                {section.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {message && (
-          <div
-            className={`p-4 rounded-md mb-4 ${
-              message.includes("Error")
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
-            }`}
-          >
-            {message}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {sections.map((section) => {
+          // Get content for this section
+          const sectionContent = section.id === selectedSection ? content : {};
+          return (
+            <div
+              key={section.id}
+              className="bg-white rounded-lg shadow p-6 relative"
+            >
+              <h3 className="text-xl font-semibold mb-4">{section.name}</h3>
+              {/* Display fields */}
+              <div className="space-y-2 mb-4">
+                {section.fields.map((field) => {
+                  // Array fields
+                  if (
+                    ["features", "faqs", "testimonials", "pricing"].includes(
+                      field
+                    )
+                  ) {
+                    const items = sectionContent[field] || [];
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={field}>
+                        <div className="font-medium text-gray-700 mb-1 capitalize">
+                          {field.replace(/([A-Z])/g, " $1").trim()}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {items.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-gray-100 rounded p-2 flex items-center gap-2"
+                            >
+                              {/* Features */}
+                              {field === "features" && (
+                                <>
+                                  <span className="inline-block bg-blue-200 text-blue-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    {item.title}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    {item.description}
+                                  </span>
+                                </>
+                              )}
+                              {/* FAQs */}
+                              {field === "faqs" && (
+                                <>
+                                  <span className="inline-block bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    Q: {item.question}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    A: {item.answer}
+                                  </span>
+                                </>
+                              )}
+                              {/* Testimonials */}
+                              {field === "testimonials" && (
+                                <>
+                                  {item.imageUrl && (
+                                    <img
+                                      src={item.imageUrl}
+                                      alt="testimonial"
+                                      className="h-8 w-8 object-cover rounded-full mr-2"
+                                    />
+                                  )}
+                                  <span className="inline-block bg-green-200 text-green-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    {item.name}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    {item.occupation}
+                                  </span>
+                                </>
+                              )}
+                              {/* Pricing */}
+                              {field === "pricing" && (
+                                <>
+                                  <span className="inline-block bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    {item.title}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    {item.amount}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Image field
+                  if (field === "imageUrl" && sectionContent.imageUrl) {
+                    return (
+                      <div key={field} className="flex items-center gap-2">
+                        <span className="font-medium text-gray-700 mb-1">
+                          Image:
+                        </span>
+                        <img
+                          src={sectionContent.imageUrl}
+                          alt="section"
+                          className="h-10 w-10 object-cover rounded"
+                        />
+                      </div>
+                    );
+                  }
+                  // Default: text fields
+                  if (sectionContent[field]) {
+                    return (
+                      <div key={field}>
+                        <span className="font-medium text-gray-700 mr-2 capitalize">
+                          {field.replace(/([A-Z])/g, " $1").trim()}:
+                        </span>
+                        {field === "buttonLink" ? (
+                          <span className="text-gray-800">
+                            {sectionContent[field]}
+                          </span>
+                        ) : (
+                          <span className="text-gray-800">
+                            {sectionContent[field]}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+                  onClick={() => {
+                    setModalSection(section);
+                    setModalContent(sectionContent);
+                    setModalOpen(true);
+                  }}
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+                  onClick={() => openEditModal(section)}
+                >
+                  Edit
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        {/* Modal for viewing or editing content */}
+        {modalOpen && modalSection && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl relative">
+              <button
+                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                onClick={closeModal}
+              >
+                &times;
+              </button>
+              <h3 className="text-2xl font-semibold mb-4">
+                {modalSection.name} Details
+              </h3>
+              <div className="space-y-4">
+                {modalSection.fields.map((field) => {
+                  // Array fields
+                  if (
+                    ["features", "faqs", "testimonials", "pricing"].includes(
+                      field
+                    )
+                  ) {
+                    const items = modalContent[field] || [];
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={field}>
+                        <div className="font-medium text-gray-700 mb-1 capitalize">
+                          {field.replace(/([A-Z])/g, " $1").trim()}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {items.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-gray-100 rounded p-2 flex items-center gap-2"
+                            >
+                              {/* Features */}
+                              {field === "features" && (
+                                <>
+                                  <span className="inline-block bg-blue-200 text-blue-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    {item.title}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    {item.description}
+                                  </span>
+                                </>
+                              )}
+                              {/* FAQs */}
+                              {field === "faqs" && (
+                                <>
+                                  <span className="inline-block bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    Q: {item.question}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    A: {item.answer}
+                                  </span>
+                                </>
+                              )}
+                              {/* Testimonials */}
+                              {field === "testimonials" && (
+                                <>
+                                  {item.imageUrl && (
+                                    <img
+                                      src={item.imageUrl}
+                                      alt="testimonial"
+                                      className="h-8 w-8 object-cover rounded-full mr-2"
+                                    />
+                                  )}
+                                  <span className="inline-block bg-green-200 text-green-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    {item.name}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    {item.occupation}
+                                  </span>
+                                </>
+                              )}
+                              {/* Pricing */}
+                              {field === "pricing" && (
+                                <>
+                                  <span className="inline-block bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs font-semibold mr-2">
+                                    {item.title}
+                                  </span>
+                                  <span className="text-gray-600 text-xs">
+                                    {item.amount}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                  // Image field
+                  if (field === "imageUrl" && modalContent.imageUrl) {
+                    return (
+                      <div key={field} className="flex items-center gap-2">
+                        <span className="font-medium text-gray-700 mb-1">
+                          Image:
+                        </span>
+                        <img
+                          src={modalContent.imageUrl}
+                          alt="section"
+                          className="h-16 w-16 object-cover rounded"
+                        />
+                      </div>
+                    );
+                  }
+                  // Default: text fields
+                  if (modalContent[field]) {
+                    return (
+                      <div key={field}>
+                        <span className="font-medium text-gray-700 mr-2 capitalize">
+                          {field.replace(/([A-Z])/g, " $1").trim()}:
+                        </span>
+                        {field === "buttonLink" ? (
+                          <span className="text-gray-800">
+                            {modalContent[field]}
+                          </span>
+                        ) : (
+                          <span className="text-gray-800">
+                            {modalContent[field]}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+              <div className="flex gap-2 mt-6">
+                <button
+                  type="button"
+                  className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+                  onClick={() => openEditModal(modalSection)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                  onClick={closeModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {sections
-            .find((s) => s.id === selectedSection)
-            ?.fields.map((field) => (
-              <div key={field}>{renderField(field)}</div>
-            ))}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-primary text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "Updating..." : "Update Content"}
-          </button>
-        </form>
       </div>
     </motion.div>
   );

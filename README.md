@@ -2,69 +2,193 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
+# V-Money
 
-In the project directory, you can run:
+A full-stack platform for content management, form submissions, and file uploads, built with React and Node.js.
 
-### `npm start`
+## Table of Contents
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Running the Server](#running-the-server)
+- [API Endpoints](#api-endpoints)
+- [Database Models](#database-models)
+- [Security](#security)
+- [File Storage](#file-storage)
+- [Default Admin User](#default-admin-user)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Features
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Admin authentication and dashboard
+- Content management by section
+- Form submissions and status tracking
+- File uploads via Cloudinary
+- Secure JWT authentication
+- Password hashing with bcrypt
+- Protected admin routes
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Prerequisites
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- Node.js v14+
+- MongoDB (local or Atlas)
+- Cloudinary account
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## Installation
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+1. **Clone the repository:**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+   ```bash
+   git clone https://github.com/Yusasive/V-Money.git
+   cd V-Money/server
+   ```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+2. **Install dependencies:**
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+   ```bash
+   npm install
+   ```
 
-## Learn More
+3. **Set up environment variables:**
+   Create a `.env` file in the `server` directory:
+   ```env
+   MONGODB_URI=mongodb://localhost:27017/vmonie
+   JWT_SECRET=your_jwt_secret_key_here
+   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+   CLOUDINARY_API_KEY=your_cloudinary_api_key
+   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+   PORT=5000
+   ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Configuration
 
-### Code Splitting
+### MongoDB
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- Install MongoDB locally or use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+- Update `MONGODB_URI` in your `.env` file.
 
-### Analyzing the Bundle Size
+### Cloudinary
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- Sign up at [Cloudinary](https://cloudinary.com/).
+- Get your cloud name, API key, and API secret from the dashboard.
+- Update the Cloudinary variables in your `.env` file.
 
-### Making a Progressive Web App
+### JWT Secret
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Generate a secure JWT secret:
 
-### Advanced Configuration
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
+## Running the Server
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- **Development:**
+  ```bash
+  npm run dev
+  ```
+- **Production:**
+  ```bash
+  npm start
+  ```
 
-### `npm run build` fails to minify
+Server runs at: [http://localhost:5000](http://localhost:5000)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
+
+## API Endpoints
+
+### Authentication
+
+- `POST /api/auth/register` — Register admin user
+- `POST /api/auth/login` — Login
+- `GET /api/auth/me` — Get current user
+
+### Content Management
+
+- `GET /api/content` — Get all content
+- `GET /api/content/:section` — Get content by section
+- `POST /api/content/:section` — Create/update content (admin only)
+- `DELETE /api/content/:section` — Delete content (admin only)
+
+### Form Submissions
+
+- `POST /api/forms/submit` — Submit form (public)
+- `GET /api/forms` — Get all submissions (admin only)
+- `GET /api/forms/:id` — Get single submission (admin only)
+- `PATCH /api/forms/:id` — Update submission status (admin only)
+- `DELETE /api/forms/:id` — Delete submission (admin only)
+
+### File Upload
+
+- `POST /api/upload/single` — Upload single file (admin only)
+- `POST /api/upload/multiple` — Upload multiple files (admin only)
+
+---
+
+## Database Models
+
+### User
+
+- `email` (unique)
+- `password` (hashed)
+- `role` (admin/user)
+
+### Content
+
+- `section` (hero, main1, main2, etc.)
+- `title`, `subtitle`, `description`
+- `buttonText`, `buttonLink`, `imageUrl`
+- `features`, `faqs`, `testimonials`, `pricing` (arrays)
+
+### FormSubmission
+
+- `formType` (onboarding, contact, loan)
+- `data` (form fields)
+- `files` (Cloudinary URLs)
+- `status` (pending, reviewed, approved, rejected)
+- `notes`
+
+---
+
+## Security
+
+- JWT authentication
+- Password hashing with bcrypt
+- Admin-only route protection
+- File upload validation
+- CORS configuration
+
+---
+
+## File Storage
+
+All uploaded files are stored in Cloudinary with automatic optimization and CDN delivery.
+
+---
+
+## Default Admin User
+
+To create the first admin user, make a POST request to `/api/auth/register`:
+
+```json
+{
+  "email": "admin@vmonie.com",
+  "password": "your_secure_password"
+}
+```
+
+---
+
+For questions or support, open an issue or contact the repository owner.
