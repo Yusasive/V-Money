@@ -1,8 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useContent } from "../../hooks/useContent";
 
 const Main3 = () => {
+  const { content, loading } = useContent('main3');
+
   const containerVariant = {
     hidden: { opacity: 0, y: 50 },
     visible: {
@@ -22,6 +25,10 @@ const Main3 = () => {
     visible: { opacity: 1, scale: 1, transition: { duration: 0.8 } },
   };
 
+  if (loading) {
+    return <div className="py-10 text-center">Loading...</div>;
+  }
+
   return (
     <div className="flex flex-col-reverse lg:flex-row">
       <motion.div
@@ -31,7 +38,7 @@ const Main3 = () => {
         animate="visible">
         <img
           className="mx-auto "
-          src="https://www.usebyte.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fpos.1228e63d.png&w=384&q=75"
+          src={content?.imageUrl || "https://www.usebyte.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Fpos.1228e63d.png&w=384&q=75"}
           alt="Main3"
         />
       </motion.div>
@@ -43,19 +50,18 @@ const Main3 = () => {
         <motion.h1
           className="text-[40px] font-lota font-bold leading-tight"
           variants={itemVariant}>
-          Receive payment with Vmonie POS.
+          {content?.title || "Receive payment with Vmonie POS."}
         </motion.h1>
         <motion.p
           className="text-sm font-lota font-medium text-gray-500"
           variants={itemVariant}>
-          Quickly accept visa and Mastercard payment from your customers, with a
-          specially designed device for your business.
+          {content?.description || "Quickly accept visa and Mastercard payment from your customers, with a specially designed device for your business."}
         </motion.p>
         <motion.div className="pt-4" variants={itemVariant}>
           <Link
             className="text-base font-medium border-primary border-[1px] py-4 px-7 text-white bg-primary font-lota rounded-2xl"
-            to="/">
-            Setup my account
+            to={content?.buttonLink || "/onboarding"}>
+            {content?.buttonText || "Setup my account"}
           </Link>
         </motion.div>
       </motion.div>

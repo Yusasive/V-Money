@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useContent } from "../hooks/useContent";
 
 const FAQs = () => {
+  const { content, loading } = useContent('faq');
   const [activeIndex, setActiveIndex] = useState(null);
 
   const toggleFAQ = (index) => {
@@ -21,16 +23,20 @@ const FAQs = () => {
     active: { rotate: 45 },
   };
 
+  if (loading) {
+    return <div className="py-24 text-center">Loading...</div>;
+  }
+
   return (
     <div className="py-24 px-4 lg:px-16 flex flex-col">
       <div className="flex flex-col text-left mb-10">
         <p className="inline-block font-semibold text-black text-[36px] lg:text-[54px]">
-          FAQ
+          {content?.title || "FAQ"}
         </p>
       </div>
 
       <ul className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
-        {faqData.map((item, index) => (
+        {(content?.faqs || []).map((item, index) => (
           <li key={index}>
             <button
               className="relative flex gap-2 items-center w-full py-5 text-base font-lota font-bold text-left border-t border-gray-200"
@@ -77,33 +83,5 @@ const FAQs = () => {
     </div>
   );
 };
-
-const faqData = [
-  {
-    question: "What do I need to know about getting my business account?",
-    answer:
-      "Your business account will be in your business name like: John Electronics limited. You don't require any documents like CAC documents to get the business account. You get the account in less than 1 mins and start receiving money instantly.",
-  },
-  {
-    question: "Can anyone with any bank send money to me in this account?",
-    answer:
-      "Yes, you can receive money from all banks in Nigeria. You can also send money to any bank in Nigeria.",
-  },
-  {
-    question: "Are there charges on the account?",
-    answer:
-      "No, we don't charge you to deposit money or send (withdraw) money to any account.",
-  },
-  {
-    question: "Is there a limit to how much I can receive into the account?",
-    answer:
-      "No, there is no limit to the amount you can receive or withdraw from the account.",
-  },
-  {
-    question: "Is your customer service responsive?",
-    answer:
-      "Yes, we even give you a personal account manager once you sign up.",
-  },
-];
 
 export default FAQs;

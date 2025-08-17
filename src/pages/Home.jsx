@@ -1,4 +1,5 @@
 import React from "react";
+import Hero from "../components/Hero";
 import CTA from "../components/CTA";
 import Main1 from "../components/MainSection/Main1";
 import Main2 from "../components/MainSection/Main2";
@@ -11,6 +12,7 @@ import TestimonialSlider from "../components/Slides/TestimonialSlider";
 const Home = () => {
   return (
     <div>
+      <Hero />
       <CTA />
       <CategoryCarousel />
       <Main1 />
