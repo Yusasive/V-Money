@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import axios from 'axios';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { uploadApi } from "../../api/client";
 
 const FileUpload = () => {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const handleFileSelect = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -15,36 +15,29 @@ const FileUpload = () => {
 
   const handleUpload = async () => {
     if (files.length === 0) {
-      setMessage('Please select files to upload');
+      setMessage("Please select files to upload");
       return;
     }
 
     setUploading(true);
-    setMessage('');
+    setMessage("");
 
     try {
-      const token = localStorage.getItem('adminToken');
       const formData = new FormData();
-      
-      files.forEach(file => {
-        formData.append('files', file);
+      files.forEach((file) => {
+        formData.append("files", file);
       });
 
-      const response = await axios.post('http://localhost:5000/api/upload/multiple', formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const response = await uploadApi.multiple(formData);
 
-      setUploadedFiles(prev => [...prev, ...response.data.files]);
+      setUploadedFiles((prev) => [...prev, ...response.data.files]);
       setFiles([]);
-      setMessage('Files uploaded successfully!');
-      
+      setMessage("Files uploaded successfully!");
+
       // Clear file input
-      document.getElementById('fileInput').value = '';
+      document.getElementById("fileInput").value = "";
     } catch (error) {
-      setMessage('Error uploading files');
+      setMessage("Error uploading files");
     } finally {
       setUploading(false);
     }
@@ -52,8 +45,8 @@ const FileUpload = () => {
 
   const copyToClipboard = (url) => {
     navigator.clipboard.writeText(url);
-    setMessage('URL copied to clipboard!');
-    setTimeout(() => setMessage(''), 2000);
+    setMessage("URL copied to clipboard!");
+    setTimeout(() => setMessage(""), 2000);
   };
 
   return (
@@ -62,7 +55,9 @@ const FileUpload = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <h2 className="text-3xl font-bold text-gray-900 font-lota">File Upload</h2>
+      <h2 className="text-3xl font-bold text-gray-900 font-lota">
+        File Upload
+      </h2>
 
       <div className="bg-white rounded-lg shadow p-6">
         <div className="space-y-4">
@@ -79,7 +74,7 @@ const FileUpload = () => {
               accept="image/*,.pdf,.doc,.docx"
             />
             <p className="text-sm text-gray-500 mt-1">
-              Supported formats: Images, PDF, DOC, DOCX
+              Supported formats: Images (jpg, png, gif).
             </p>
           </div>
 
@@ -97,9 +92,13 @@ const FileUpload = () => {
           )}
 
           {message && (
-            <div className={`p-4 rounded-md ${
-              message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-            }`}>
+            <div
+              className={`p-4 rounded-md ${
+                message.includes("Error")
+                  ? "bg-red-100 text-red-700"
+                  : "bg-green-100 text-green-700"
+              }`}
+            >
               {message}
             </div>
           )}
@@ -109,7 +108,7 @@ const FileUpload = () => {
             disabled={uploading || files.length === 0}
             className="bg-primary text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {uploading ? 'Uploading...' : 'Upload Files'}
+            {uploading ? "Uploading..." : "Upload Files"}
           </button>
         </div>
       </div>
@@ -134,7 +133,9 @@ const FileUpload = () => {
                     </div>
                   )}
                 </div>
-                <p className="text-sm font-medium truncate">{file.originalName}</p>
+                <p className="text-sm font-medium truncate">
+                  {file.originalName}
+                </p>
                 <div className="mt-2 space-y-1">
                   <button
                     onClick={() => copyToClipboard(file.url)}

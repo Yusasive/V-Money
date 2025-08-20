@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import axios from "axios";
+import React, { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { formsApi } from "../../api/client";
 
 const FormSubmissions = () => {
   const [submissions, setSubmissions] = useState([]);
@@ -12,35 +12,33 @@ const FormSubmissions = () => {
     page: 1,
   });
   const [pagination, setPagination] = useState({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [actionNotes, setActionNotes] = useState("");
+  const [statusNotice, setStatusNotice] = useState(null); 
+  const [updatingStatus, setUpdatingStatus] = useState(null);
 
-  // Move fetchSubmissions above useEffect
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = useCallback(async () => {
     try {
-      const token = localStorage.getItem("adminToken");
-      const params = new URLSearchParams();
+      const params = {};
+      if (filters.formType) params.formType = filters.formType;
+      if (filters.status) params.status = filters.status;
+      params.page = filters.page;
+      params.limit = 10;
 
-      if (filters.formType) params.append("formType", filters.formType);
-      if (filters.status) params.append("status", filters.status);
-      params.append("page", filters.page);
-      params.append("limit", "10");
-
-      const response = await axios.get(
-        `http://localhost:5000/api/forms?${params}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await formsApi.list(params);
 
       setSubmissions(response.data.submissions);
       setPagination({
         currentPage: response.data.currentPage,
         totalPages: response.data.totalPages,
+        total: response.data.total,
       });
       setLoading(false);
     } catch (error) {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     fetchSubmissions();
@@ -48,36 +46,62 @@ const FormSubmissions = () => {
 
   const updateSubmissionStatus = async (id, status, notes = "") => {
     try {
-      const token = localStorage.getItem("adminToken");
-      await axios.patch(
-        `http://localhost:5000/api/forms/${id}`,
-        { status, notes },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      setUpdatingStatus(status);
+      const { data } = await formsApi.update(id, { status, notes });
       fetchSubmissions();
       setSelectedSubmission(null);
+
+      // Build message based on email result
+      const email = data?.email || {};
+      if (email.sent) {
+        setStatusNotice({
+          title: `Status updated to ${status}`,
+          message: "Email sent successfully to the user.",
+        });
+      } else {
+        const reasonMap = {
+          no_email: "No email found on this submission.",
+          invalid_email: "The email address on this submission is invalid.",
+          send_failed: "Email could not be sent (server error).",
+          no_status: "No status provided to include in the email.",
+        };
+        const reason = reasonMap[email.reason] || "Unknown email status.";
+        setStatusNotice({
+          title: `Status updated to ${status}`,
+          message: `Note: ${reason}`,
+        });
+      }
     } catch (error) {
       console.error("Error updating submission:", error);
+      setStatusNotice({
+        title: "Update failed",
+        message: "Failed to update status. Please try again.",
+      });
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
   const deleteSubmission = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this submission?"))
-      return;
+    setConfirmDeleteId(id);
+  };
 
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return;
     try {
-      const token = localStorage.getItem("adminToken");
-      await axios.delete(`http://localhost:5000/api/forms/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      setDeleting(true);
+      await formsApi.remove(confirmDeleteId);
       fetchSubmissions();
       setSelectedSubmission(null);
     } catch (error) {
       console.error("Error deleting submission:", error);
+    } finally {
+      setDeleting(false);
+      setConfirmDeleteId(null);
     }
   };
+
+  const cancelDelete = () => setConfirmDeleteId(null);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -97,124 +121,142 @@ const FormSubmissions = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <h2 className="text-3xl font-bold text-gray-900 font-lota">
-        Form Submissions
-      </h2>
+      <h2 className="text-3xl font-bold text-gray-900">Form Submissions</h2>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow flex flex-wrap gap-4">
-        <select
-          value={filters.formType}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              formType: e.target.value,
-              page: 1,
-            }))
-          }
-          className="px-3 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="">All Form Types</option>
-          <option value="onboarding">Onboarding</option>
-          <option value="contact">Contact</option>
-          <option value="loan">Loan</option>
-        </select>
+      <div className="bg-white p-4 rounded-lg shadow flex flex-wrap gap-4 items-center">
+        <div className="space-y-1">
+          <label className="text-xs text-gray-500">Status</label>
+          <select
+            value={filters.status}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                status: e.target.value,
+                page: 1,
+              }))
+            }
+            className="px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="">All</option>
+            <option value="pending">Pending</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
 
-        <select
-          value={filters.status}
-          onChange={(e) =>
-            setFilters((prev) => ({ ...prev, status: e.target.value, page: 1 }))
-          }
-          className="px-3 py-2 border border-gray-300 rounded-md"
+        <button
+          onClick={() => setFilters({ formType: "", status: "", page: 1 })}
+          className="ml-auto text-sm px-3 py-2 rounded-md border hover:bg-gray-100"
         >
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="reviewed">Reviewed</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </select>
+          Reset Filters
+        </button>
 
         <div className="ml-auto text-sm text-gray-600">
-          Total: {pagination.total} submissions
+          Total: {pagination.total || 0} submissions
         </div>
       </div>
 
       {/* Submissions List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Form Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Submitted
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {submissions.map((submission) => (
-              <tr key={submission._id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 capitalize">
-                    {submission.formType}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {submission.data.firstName ||
-                      submission.data.email ||
-                      "N/A"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(submission.status)}`}
-                  >
-                    {submission.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(submission.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button
-                    onClick={() => setSelectedSubmission(submission)}
-                    className="text-primary hover:text-blue-700"
-                  >
-                    View
-                  </button>
-                  <button
-                    onClick={() => deleteSubmission(submission._id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                </td>
+        {submissions.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            No submissions found.
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Form Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Submitted
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {submissions.map((submission, i) => (
+                <tr
+                  key={submission._id}
+                  className={`hover:bg-gray-50 transition ${
+                    i % 2 === 0 ? "bg-gray-50/30" : "bg-white"
+                  }`}
+                >
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900 capitalize">
+                      {submission.formType}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {submission.data?.firstName ||
+                        submission.data?.email ||
+                        "N/A"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                        submission.status
+                      )}`}
+                    >
+                      {submission.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {new Date(submission.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium space-x-3">
+                    <button
+                      onClick={() => setSelectedSubmission(submission)}
+                      className="text-primary hover:text-blue-700"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => deleteSubmission(submission._id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex justify-center space-x-2">
+        <div className="flex justify-center items-center space-x-2 mt-4">
+          <button
+            disabled={filters.page === 1}
+            onClick={() =>
+              setFilters((prev) => ({ ...prev, page: prev.page - 1 }))
+            }
+            className="px-3 py-2 rounded-md border hover:bg-gray-100 disabled:opacity-50"
+          >
+            Prev
+          </button>
+
           {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
             (page) => (
               <button
@@ -223,103 +265,296 @@ const FormSubmissions = () => {
                 className={`px-3 py-2 rounded-md ${
                   page === pagination.currentPage
                     ? "bg-primary text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-100"
+                    : "bg-white text-gray-700 hover:bg-gray-100 border"
                 }`}
               >
                 {page}
               </button>
             )
           )}
+
+          <button
+            disabled={filters.page === pagination.totalPages}
+            onClick={() =>
+              setFilters((prev) => ({ ...prev, page: prev.page + 1 }))
+            }
+            className="px-3 py-2 rounded-md border hover:bg-gray-100 disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       )}
 
       {/* Submission Detail Modal */}
-      {selectedSubmission && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">
-                  {selectedSubmission.formType} Submission
+      <AnimatePresence>
+        {/* Delete Confirmation Modal */}
+        {confirmDeleteId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-lg max-w-md w-full shadow-lg"
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Delete submission?
                 </h3>
-                <button
-                  onClick={() => setSelectedSubmission(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Submission Data */}
-              <div className="space-y-4 mb-6">
-                <h4 className="font-semibold">Form Data:</h4>
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <pre className="text-sm whitespace-pre-wrap">
-                    {JSON.stringify(selectedSubmission.data, null, 2)}
-                  </pre>
+                <p className="text-sm text-gray-600 mt-2">
+                  This action cannot be undone.
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    onClick={cancelDelete}
+                    className="px-4 py-2 rounded-md border hover:bg-gray-100"
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                    disabled={deleting}
+                  >
+                    {deleting ? "Deleting..." : "Delete"}
+                  </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
 
-              {/* Files */}
-              {selectedSubmission.files &&
-                selectedSubmission.files.length > 0 && (
+        {selectedSubmission && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black min-h-screen bg-opacity-50 z-50 overflow-y-auto"
+            onClick={() => setSelectedSubmission(null)}
+          >
+            <div className="min-h-screen flex items-center justify-center p-4">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-lg max-w-4xl w-full shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-8 max-h-[200vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold capitalize">
+                      {selectedSubmission.formType} Submission
+                    </h3>
+                    <button
+                      onClick={() => setSelectedSubmission(null)}
+                      className="text-gray-500 text-xl font-bold hover:text-gray-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Submission Data */}
                   <div className="space-y-4 mb-6">
-                    <h4 className="font-semibold">Uploaded Files:</h4>
+                    <h4 className="font-semibold">Form Data:</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedSubmission.files.map((file, index) => (
-                        <div key={index} className="border p-4 rounded-md">
-                          <p className="font-medium">{file.fieldName}</p>
-                          <p className="text-sm text-gray-600">
-                            {file.originalName}
-                          </p>
-                          <a
-                            href={file.cloudinaryUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
+                      {Object.entries(selectedSubmission.data || {}).map(
+                        ([key, value]) => (
+                          <div
+                            key={key}
+                            className="bg-gray-50 p-3 rounded-md border text-sm"
                           >
-                            View File
-                          </a>
-                        </div>
-                      ))}
+                            <p className="text-xs uppercase text-gray-500">
+                              {key}
+                            </p>
+                            <p className="font-medium text-gray-900">
+                              {String(value)}
+                            </p>
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-sm text-primary">
+                        Show Raw JSON
+                      </summary>
+                      <pre className="text-xs bg-gray-100 p-3 rounded-md overflow-x-auto mt-2">
+                        {JSON.stringify(selectedSubmission.data || {}, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+
+                  {/* Files */}
+                  {selectedSubmission.files?.length > 0 && (
+                    <div className="space-y-4 mb-6">
+                      <h4 className="font-semibold">Uploaded Files:</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedSubmission.files.map((file, index) => (
+                          <div key={index} className="border p-4 rounded-md">
+                            <p className="font-medium">{file.fieldName}</p>
+                            <p className="text-sm text-gray-600">
+                              {file.originalName}
+                            </p>
+                            <a
+                              href={file.cloudinaryUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              <img
+                                className="w-full h-32 object-cover rounded-md mt-2"
+                                src={file.cloudinaryUrl}
+                                alt={file.cloudinaryUrl}
+                              />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status Update */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Update Status:</h4>
+
+                    {/* Optional notes to include in email */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-gray-500">
+                        Notes to user (optional)
+                      </label>
+                      <textarea
+                        value={actionNotes}
+                        onChange={(e) => setActionNotes(e.target.value)}
+                        placeholder="Add a message that will be emailed to the user"
+                        className="w-full p-2 border rounded-md text-sm"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() =>
+                          updateSubmissionStatus(
+                            selectedSubmission._id,
+                            "reviewed",
+                            actionNotes
+                          )
+                        }
+                        disabled={!!updatingStatus}
+                        className={`px-4 py-2 rounded-md text-white hover:bg-blue-600 ${
+                          updatingStatus
+                            ? "opacity-60 cursor-not-allowed bg-blue-500"
+                            : "bg-blue-500"
+                        }`}
+                      >
+                        {updatingStatus === "reviewed" ? (
+                          <span className="flex items-center gap-2">
+                            <span className="inline-block h-4 w-4 border-2 border-white border-b-transparent rounded-full animate-spin" />
+                            Updating...
+                          </span>
+                        ) : (
+                          "Reviewed"
+                        )}
+                      </button>
+                      <button
+                        onClick={() =>
+                          updateSubmissionStatus(
+                            selectedSubmission._id,
+                            "approved",
+                            actionNotes
+                          )
+                        }
+                        disabled={!!updatingStatus}
+                        className={`px-4 py-2 rounded-md text-white hover:bg-green-600 ${
+                          updatingStatus
+                            ? "opacity-60 cursor-not-allowed bg-green-500"
+                            : "bg-green-500"
+                        }`}
+                      >
+                        {updatingStatus === "approved" ? (
+                          <span className="flex items-center gap-2">
+                            <span className="inline-block h-4 w-4 border-2 border-white border-b-transparent rounded-full animate-spin" />
+                            Updating...
+                          </span>
+                        ) : (
+                          "Approve"
+                        )}
+                      </button>
+                      <button
+                        onClick={() =>
+                          updateSubmissionStatus(
+                            selectedSubmission._id,
+                            "rejected",
+                            actionNotes
+                          )
+                        }
+                        disabled={!!updatingStatus}
+                        className={`px-4 py-2 rounded-md text-white hover:bg-red-600 ${
+                          updatingStatus
+                            ? "opacity-60 cursor-not-allowed bg-red-500"
+                            : "bg-red-500"
+                        }`}
+                      >
+                        {updatingStatus === "rejected" ? (
+                          <span className="flex items-center gap-2">
+                            <span className="inline-block h-4 w-4 border-2 border-white border-b-transparent rounded-full animate-spin" />
+                            Updating...
+                          </span>
+                        ) : (
+                          "Reject"
+                        )}
+                      </button>
                     </div>
                   </div>
-                )}
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              {/* Status Update */}
-              <div className="space-y-4">
-                <h4 className="font-semibold">Update Status:</h4>
-                <div className="flex space-x-2">
+      {/* Status Notice Modal */}
+      <AnimatePresence>
+        {statusNotice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]"
+            onClick={() => setStatusNotice(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-lg max-w-md w-full shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {statusNotice.title}
+                </h3>
+                <p className="text-sm text-gray-700 mt-2 whitespace-pre-line">
+                  {statusNotice.message}
+                </p>
+                <div className="mt-6 flex justify-end">
                   <button
-                    onClick={() =>
-                      updateSubmissionStatus(selectedSubmission._id, "reviewed")
-                    }
-                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+                    onClick={() => setStatusNotice(null)}
+                    className="px-4 py-2 rounded-md bg-primary text-white hover:opacity-90"
                   >
-                    Mark as Reviewed
-                  </button>
-                  <button
-                    onClick={() =>
-                      updateSubmissionStatus(selectedSubmission._id, "approved")
-                    }
-                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() =>
-                      updateSubmissionStatus(selectedSubmission._id, "rejected")
-                    }
-                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600"
-                  >
-                    Reject
+                    OK
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

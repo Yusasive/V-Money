@@ -1,35 +1,40 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import axios from 'axios';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import api from "../../api/client";
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', formData);
-      localStorage.setItem('adminToken', response.data.token);
-      navigate('/admin/dashboard');
+      const response = await api.post(
+        "https://vmonie-server.onrender.com/api/auth/login",
+        formData
+      );
+      const token = response.data.token;
+      localStorage.setItem("adminToken", token);
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      navigate("/admin/dashboard");
     } catch (error) {
-      setError(error.response?.data?.message || 'Login failed');
+      setError(error.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -43,8 +48,20 @@ const AdminLogin = () => {
         className="max-w-md w-full bg-white rounded-lg shadow-lg p-8"
       >
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 font-lota">Admin Login</h1>
-          <p className="text-gray-600 mt-2">Access your admin dashboard</p>
+          <h1 className="text-3xl font-bold text-gray-900 font-lota">
+            Admin Login
+          </h1>
+          <p className="text-gray-600 mt-2">
+            This area is <span className="font-semibold">restricted</span>.
+            Authorized administrators only.
+          </p>
+        </div>
+
+        {/* Restriction Notice */}
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-6 text-sm">
+          ⚠️ Access to this dashboard is limited to{" "}
+          <strong>V-Monie Administrators</strong>. Unauthorized access is
+          prohibited.
         </div>
 
         {error && (
@@ -65,7 +82,7 @@ const AdminLogin = () => {
               onChange={handleChange}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="admin@vmonie.com"
+              placeholder="name@yourcompany.com"
             />
           </div>
 
@@ -80,7 +97,7 @@ const AdminLogin = () => {
               onChange={handleChange}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Enter your password"
+              placeholder="Administrator password"
             />
           </div>
 
@@ -89,7 +106,7 @@ const AdminLogin = () => {
             disabled={loading}
             className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
       </motion.div>
