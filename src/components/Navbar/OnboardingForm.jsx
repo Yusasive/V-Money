@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formsApi } from "../../api/client";
+import SubmissionModal from "./SubmissionModal";
 
 const steps = ["Documentation", "Requirements"];
 
 export default function OnboardingForm() {
+  const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -32,16 +34,15 @@ export default function OnboardingForm() {
     businessPic: null,
     ninSlip: null,
   });
-  const [error, setError] = useState(""); // global error banner
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Per-field validation state
-  const [fieldErrors, setFieldErrors] = useState({}); // { fieldName: errorText }
-  const [touched, setTouched] = useState({}); // { fieldName: true }
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [attemptedNext, setAttemptedNext] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
-  // Persist text fields (not files) to localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem("onboardingForm");
@@ -260,6 +261,7 @@ export default function OnboardingForm() {
       setAttemptedNext(false);
       setAttemptedSubmit(false);
       setStep(0);
+      setShowModal(true);
     } catch (error) {
       setError(
         error.response?.data?.message ||
@@ -358,6 +360,11 @@ export default function OnboardingForm() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
+      <SubmissionModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        email={formData.email}
+      />
       {/* Step Indicator */}
       <div className="flex items-center justify-between mb-6">
         {steps.map((s, i) => (
