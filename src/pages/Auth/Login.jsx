@@ -1,44 +1,43 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiLogIn, FiMail, FiLock } from "react-icons/fi";
+import { FiLogIn, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import { authHelpers } from "../../config/supabase";
 
-const AdminLogin = () => {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
-
+    setLoading(true);
     try {
       const { data, error: signInError } = await authHelpers.signIn(
-        formData.email,
-        formData.password
+        email,
+        password
       );
-
       if (signInError) {
         setError(signInError.message || "Login failed");
         return;
       }
-
-      if (!authHelpers.isAdmin(data.user)) {
-        setError("Admin access required");
-        await authHelpers.signOut();
-        return;
+      const role =
+        data?.user?.user_metadata?.role ||
+        data?.user?.app_metadata?.role ||
+        "user";
+      if (role === "admin" || role === "staff") {
+        navigate("/admin/dashboard");
+      } else if (role === "merchant") {
+        navigate("/merchant/dashboard");
+      } else {
+        navigate("/");
       }
-
-      navigate("/admin/dashboard");
-    } catch (error) {
-      setError(error.message || "Login failed");
+    } catch (e) {
+      setError(e.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -59,12 +58,8 @@ const AdminLogin = () => {
                 <FiLogIn className="h-5 w-5" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Admin Login
+                Sign In
               </h1>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded mb-4 text-sm">
-              Access is restricted to V-Monie administrators.
             </div>
 
             {error && (
@@ -82,16 +77,14 @@ const AdminLogin = () => {
                   <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="admin@yourcompany.com"
+                    placeholder="you@company.com"
                     className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
                   Password
@@ -99,17 +92,25 @@ const AdminLogin = () => {
                 <div className="relative">
                   <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="Your password"
-                    className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full pl-9 pr-10 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                   />
+                  <button
+                    type="button"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                  </button>
                 </div>
               </div>
-
               <button
                 type="submit"
                 disabled={loading}
@@ -119,22 +120,19 @@ const AdminLogin = () => {
               </button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-300">
-              <div className="space-x-2">
-                <span>Need an account?</span>
-                <Link
-                  to="/admin/register"
-                  className="text-primary hover:underline"
-                >
-                  Create admin
+            <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-300 space-y-2">
+              <div>
+                <span>Don't have an account? </span>
+                <Link to="/register" className="text-primary hover:underline">
+                  Create one
                 </Link>
               </div>
-              <div className="mt-2">
+              <div>
                 <Link
-                  to="/reset-password"
+                  to="/forgot-password"
                   className="text-primary hover:underline"
                 >
-                  Have a reset link? Reset password
+                  Forgot your password?
                 </Link>
               </div>
             </div>
@@ -145,4 +143,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin;
+export default Login;

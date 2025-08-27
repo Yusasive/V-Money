@@ -5,6 +5,10 @@ import { authApi, formsApi, contentApi } from "../../api/client";
 import ContentManager from "./ContentManager";
 import FormSubmissions from "./FormSubmissions";
 import FileUpload from "./FileUpload";
+import Tasks from "./Tasks";
+import Merchants from "./Merchants";
+import Disputes from "./Disputes";
+import RequireRole from "../../components/Auth/RequireRole";
 import { FiMoon, FiSun, FiEdit, FiFileText, FiUpload } from "react-icons/fi";
 
 const AdminDashboard = () => {
@@ -134,6 +138,9 @@ const AdminDashboard = () => {
               {[
                 { to: "/admin/dashboard", label: "Dashboard", end: true },
                 { to: "/admin/dashboard/content", label: "Content Manager" },
+                { to: "/admin/dashboard/tasks", label: "Tasks" },
+                { to: "/admin/dashboard/merchants", label: "Merchants" },
+                { to: "/admin/dashboard/disputes", label: "Disputes" },
                 {
                   to: "/admin/dashboard/submissions",
                   label: "Form Submissions",
@@ -165,9 +172,54 @@ const AdminDashboard = () => {
         <main className="flex-1 p-4 md:p-6">
           <Routes>
             <Route path="/" element={<DashboardHome stats={stats} />} />
-            <Route path="/content" element={<ContentManager />} />
-            <Route path="/submissions" element={<FormSubmissions />} />
-            <Route path="/upload" element={<FileUpload />} />
+            <Route
+              path="/content"
+              element={
+                <RequireRole roles={["admin", "staff"]}>
+                  <ContentManager />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/tasks"
+              element={
+                <RequireRole roles={["admin", "staff"]}>
+                  <Tasks />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/merchants"
+              element={
+                <RequireRole roles={["admin", "staff"]}>
+                  <Merchants />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/disputes"
+              element={
+                <RequireRole roles={["admin", "staff"]}>
+                  <Disputes />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/submissions"
+              element={
+                <RequireRole roles={["admin"]}>
+                  <FormSubmissions />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/upload"
+              element={
+                <RequireRole roles={["admin", "staff"]}>
+                  <FileUpload />
+                </RequireRole>
+              }
+            />
           </Routes>
         </main>
       </div>
