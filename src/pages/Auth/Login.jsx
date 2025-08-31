@@ -1,138 +1,181 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { FiLogIn, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
-import { authHelpers } from "../../config/supabase";
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { authHelpers } from '../../config/supabase';
+import Button from '../../components/UI/Button';
+import toast from 'react-hot-toast';
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
+  
   const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (error) setError('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setError('');
+
     try {
       const { data, error: signInError } = await authHelpers.signIn(
-        email,
-        password
+        formData.email,
+        formData.password
       );
+
       if (signInError) {
-        setError(signInError.message || "Login failed");
+        setError(signInError.message);
         return;
       }
-      const role =
-        data?.user?.user_metadata?.role ||
-        data?.user?.app_metadata?.role ||
-        "user";
-      if (role === "admin" || role === "staff") {
-        navigate("/admin/dashboard");
-      } else if (role === "merchant") {
-        navigate("/merchant/dashboard");
-      } else {
-        navigate("/");
+
+      // Store token
+      localStorage.setItem('authToken', data.session.access_token);
+      
+      const role = authHelpers.getUserRole(data.user);
+      
+      // Check if user is approved (for aggregators and staff)
+      if (['aggregator', 'staff'].includes(role)) {
+        // You'll need to check approval status from your backend
+        // For now, we'll assume they're approved
       }
-    } catch (e) {
-      setError(e.message || "Login failed");
+
+      toast.success('Login successful!');
+      
+      // Redirect based on role
+      switch (role) {
+        case 'admin':
+          navigate('/admin/dashboard');
+          break;
+        case 'staff':
+          navigate('/staff/dashboard');
+          break;
+        case 'aggregator':
+          navigate('/aggregator/dashboard');
+          break;
+        default:
+          navigate('/');
+      }
+    } catch (error) {
+      setError(error.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow border border-gray-100 dark:border-gray-700">
-          <div className="absolute -top-10 -right-10 h-40 w-40 bg-primary/20 rounded-full" />
-          <div className="p-6 relative">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                <FiLogIn className="h-5 w-5" />
+        <div className="relative overflow-hidden rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl shadow-xl border border-gray-200 dark:border-gray-700">
+          {/* Decorative background */}
+          <div className="absolute -top-10 -right-10 h-40 w-40 bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-full" />
+          
+          <div className="relative p-8">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="h-16 w-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+                <LogIn className="h-8 w-8" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Sign In
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Welcome Back
               </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Sign in to your account
+              </p>
             </div>
 
+            {/* Error Message */}
             {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Email */}
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email Address
                 </label>
                 <div className="relative">
-                  <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
                     required
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
                     placeholder="you@company.com"
-                    className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
+
+              {/* Password */}
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Password
                 </label>
                 <div className="relative">
-                  <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
                     required
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
                     placeholder="Your password"
-                    className="w-full pl-9 pr-10 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <button
                     type="button"
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
-                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
-              <button
+
+              {/* Submit Button */}
+              <Button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-primary text-white py-2 px-4 rounded shadow hover:shadow-md transition disabled:opacity-50"
+                loading={loading}
+                className="w-full"
+                size="lg"
               >
-                {loading ? "Signing in..." : "Sign In"}
-              </button>
+                Sign In
+              </Button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-300 space-y-2">
-              <div>
-                <span>Don't have an account? </span>
-                <Link to="/register" className="text-primary hover:underline">
+            {/* Footer Links */}
+            <div className="mt-8 space-y-4 text-center">
+              <Link
+                to="/forgot-password"
+                className="block text-sm text-primary hover:text-blue-700 font-medium"
+              >
+                Forgot your password?
+              </Link>
+              
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-primary hover:text-blue-700 font-medium">
                   Create one
-                </Link>
-              </div>
-              <div>
-                <Link
-                  to="/forgot-password"
-                  className="text-primary hover:underline"
-                >
-                  Forgot your password?
                 </Link>
               </div>
             </div>

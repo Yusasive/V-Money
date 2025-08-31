@@ -1,265 +1,304 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import {
-  FiUserPlus,
-  FiMail,
-  FiLock,
-  FiTag,
-  FiEye,
-  FiEyeOff,
-} from "react-icons/fi";
-import { authApi } from "../../api/client";
-
-const roles = [
-  { value: "aggregator", label: "Aggregator" },
-  { value: "staff", label: "Staff" },
-  { value: "admin", label: "Admin (requires UID)" },
-];
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { UserPlus, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
+import { authApi } from '../../api/client';
+import Button from '../../components/UI/Button';
+import toast from 'react-hot-toast';
 
 const Register = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    username: '',
+    password: '',
+    confirmPassword: '',
+    role: 'aggregator'
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({
-    score: 0,
-    hints: [],
-  });
-  const [role, setRole] = useState("aggregator");
-  const [adminUid, setAdminUid] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [errors, setErrors] = useState({});
+  
   const navigate = useNavigate();
 
-  const evaluateStrength = (pwd) => {
-    // Simple strength estimator
-    let score = 0;
-    const hints = [];
-    if (pwd.length >= 8) score += 1;
-    else hints.push("Use at least 8 characters");
-    if (/[A-Z]/.test(pwd)) score += 1;
-    else hints.push("Add an uppercase letter (A-Z)");
-    if (/[a-z]/.test(pwd)) score += 1;
-    else hints.push("Add a lowercase letter (a-z)");
-    if (/[0-9]/.test(pwd)) score += 1;
-    else hints.push("Add a number (0-9)");
-    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
-    else hints.push("Add a symbol (!@#$)");
-    return { score, hints };
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
+    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+    if (!/^[0-9]{10,14}$/.test(formData.phone.replace(/\D/g, ''))) {
+      newErrors.phone = 'Phone number must be 10-14 digits';
+    }
+    if (!formData.username.trim()) newErrors.username = 'Username is required';
+    if (formData.username.length < 3) newErrors.username = 'Username must be at least 3 characters';
+    if (!formData.password) newErrors.password = 'Password is required';
+    if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handlePasswordChange = (val) => {
-    setPassword(val);
-    setPasswordStrength(evaluateStrength(val));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (password !== confirm) {
-      setError("Passwords do not match");
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
+    
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
-      const payload = { email, password, role };
-      if (role === "admin") {
-        payload.admin_uid = adminUid.trim();
-      }
-      const { data } = await authApi.register(payload);
-      setSuccess("Account created! Check your email to verify your account.");
-      // Redirect to login after a short delay
-      setTimeout(() => navigate("/login"), 2000);
-    } catch (e) {
-      const msg =
-        e?.response?.data?.message || e.message || "Registration failed";
-      setError(msg);
+      const { confirmPassword, ...submitData } = formData;
+      await authApi.register(submitData);
+      
+      toast.success('Registration successful! Please wait for admin approval.');
+      navigate('/login');
+    } catch (error) {
+      const message = error.response?.data?.message || 'Registration failed';
+      toast.error(message);
+      setErrors({ submit: message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow border border-gray-100 dark:border-gray-700">
-          <div className="absolute -top-10 -right-10 h-40 w-40 bg-primary/20 rounded-full" />
-          <div className="p-6 relative">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                <FiUserPlus className="h-5 w-5" />
+        <div className="relative overflow-hidden rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl shadow-xl border border-gray-200 dark:border-gray-700">
+          {/* Decorative background */}
+          <div className="absolute -top-10 -right-10 h-40 w-40 bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-full" />
+          <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-gradient-to-tr from-indigo-500/20 to-purple-600/20 rounded-full" />
+          
+          <div className="relative p-8">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="h-16 w-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+                <UserPlus className="h-8 w-8" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Create Account
               </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Join the Vmonie platform
+              </p>
             </div>
 
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                {success}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Full Name */}
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
-                  Email Address
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Full Name
                 </label>
                 <div className="relative">
-                  <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="you@company.com"
-                    className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
+                      errors.fullName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="Enter your full name"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => handlePasswordChange(e.target.value)}
-                    required
-                    minLength={6}
-                    placeholder="Minimum 6 characters"
-                    className="w-full pl-9 pr-10 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <button
-                    type="button"
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showConfirm ? "text" : "password"}
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    required
-                    minLength={6}
-                    placeholder="Confirm your password"
-                    className="w-full pl-9 pr-10 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <button
-                    type="button"
-                    aria-label={showConfirm ? "Hide confirm" : "Show confirm"}
-                    onClick={() => setShowConfirm((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirm ? <FiEyeOff /> : <FiEye />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Password strength meter */}
-              <div>
-                <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded">
-                  <div
-                    className={`${
-                      passwordStrength.score <= 2
-                        ? "bg-red-500"
-                        : passwordStrength.score === 3
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                    } h-2 rounded`}
-                    style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
-                  />
-                </div>
-                {password && passwordStrength.hints.length > 0 && (
-                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-300 list-disc list-inside space-y-1">
-                    {passwordStrength.hints.map((h, i) => (
-                      <li key={i}>{h}</li>
-                    ))}
-                  </ul>
+                {errors.fullName && (
+                  <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>
                 )}
               </div>
 
+              {/* Email */}
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
-                  Role
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email Address
                 </label>
                 <div className="relative">
-                  <FiTag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {roles.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
+                      errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="you@company.com"
+                  />
+                </div>
+                {errors.email && (
+                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Phone & Username */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className={`w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
+                        errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                      placeholder="08012345678"
+                    />
+                  </div>
+                  {errors.phone && (
+                    <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
+                      errors.username ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="username"
+                  />
+                  {errors.username && (
+                    <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                  )}
                 </div>
               </div>
 
-              {role === "admin" && (
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">
-                    Admin UID
-                  </label>
+              {/* Role Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Role
+                </label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                >
+                  <option value="aggregator">Aggregator</option>
+                  <option value="staff">Staff</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Admin accounts are created by existing administrators
+                </p>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    value={adminUid}
-                    onChange={(e) => setAdminUid(e.target.value)}
-                    placeholder="Enter provided admin UID"
-                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded p-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`w-full pl-10 pr-12 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
+                      errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="Minimum 8 characters"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className={`w-full pl-10 pr-12 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
+                      errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                loading={loading}
+                className="w-full"
+                size="lg"
+              >
+                Create Account
+              </Button>
+
+              {/* Error Message */}
+              {errors.submit && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
+                  {errors.submit}
                 </div>
               )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-primary text-white py-2 px-4 rounded shadow hover:shadow-md transition disabled:opacity-50"
-              >
-                {loading ? "Creating..." : "Create Account"}
-              </button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-300">
-              <span>Already have an account? </span>
-              <Link to="/login" className="text-primary hover:underline">
-                Sign in
-              </Link>
+            {/* Footer */}
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Already have an account?{' '}
+                <Link to="/login" className="text-primary hover:text-blue-700 font-medium">
+                  Sign in
+                </Link>
+              </p>
             </div>
           </div>
         </div>
