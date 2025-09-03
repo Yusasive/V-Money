@@ -1,22 +1,46 @@
 import axios from "axios";
 
-// Centralized API base URL
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL ||
-  process.env.REACT_APP_API_BASE_URL ||
-  "https://vmonie-server.onrender.com/api";
+// Centralized API base URL with smart defaulting
+function resolveApiBaseUrl() {
+  const envUrl =
+    process.env.REACT_APP_API_URL || process.env.REACT_APP_API_BASE_URL;
+  if (envUrl) return envUrl;
+
+  try {
+    if (typeof window !== "undefined") {
+      const { hostname } = window.location;
+      const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+      return isLocal ? "http://localhost:5000/api" : "/api"; // same-origin in prod
+    }
+  } catch {}
+  return "http://localhost:5000/api";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const api = axios.create({ baseURL: API_BASE_URL });
 
 // Attach token from localStorage on every request
 api.interceptors.request.use((config) => {
   try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    const raw = localStorage.getItem("authToken");
+    console.log("[DIAGNOSE] localStorage.getItem('authToken'):", raw);
+    const token = typeof window !== "undefined" ? raw : null;
     if (token) {
       config.headers = config.headers || {};
       config.headers["Authorization"] = `Bearer ${token}`;
+      console.log(
+        "[DIAGNOSE] Axios sending Authorization header:",
+        config.headers["Authorization"]
+      );
+    } else {
+      console.log(
+        "[DIAGNOSE] No token found, not setting Authorization header."
+      );
     }
-  } catch {}
+  } catch (e) {
+    console.log("[DIAGNOSE] Error in Axios interceptor:", e);
+  }
   return config;
 });
 
@@ -85,8 +109,10 @@ export const merchantsApi = {
   get: (id) => api.get(`/merchants/${id}`),
   update: (id, data) => api.patch(`/merchants/${id}`, data),
   updateMe: (data) => api.patch("/merchants/me", data),
-  addTransaction: (id, transactionData) => api.post(`/merchants/${id}/transactions`, transactionData),
-  getTransactions: (id, params = {}) => api.get(`/merchants/${id}/transactions`, { params }),
+  addTransaction: (id, transactionData) =>
+    api.post(`/merchants/${id}/transactions`, transactionData),
+  getTransactions: (id, params = {}) =>
+    api.get(`/merchants/${id}/transactions`, { params }),
   flagged: () => api.get("/merchants/flagged"),
 };
 

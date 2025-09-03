@@ -1,73 +1,62 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { authHelpers } from '../../config/supabase';
-import Button from '../../components/UI/Button';
-import toast from 'react-hot-toast';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { authApi } from "../../api/client";
+import Button from "../../components/UI/Button";
+import toast from "react-hot-toast";
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState("");
+
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (error) setError('');
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const { data, error: signInError } = await authHelpers.signIn(
-        formData.email,
-        formData.password
-      );
-
-      if (signInError) {
-        setError(signInError.message);
-        return;
-      }
-
-      // Store token
-      localStorage.setItem('authToken', data.session.access_token);
-      
-      const role = authHelpers.getUserRole(data.user);
-      
-      // Check if user is approved (for aggregators and staff)
-      if (['aggregator', 'staff'].includes(role)) {
-        // You'll need to check approval status from your backend
-        // For now, we'll assume they're approved
-      }
-
-      toast.success('Login successful!');
-      
-      // Redirect based on role
+      const response = await authApi.login(formData);
+      // Try both possible token locations
+      const accessToken =
+        response.data?.session?.access_token || response.data?.access_token;
+      // console.log("[DIAGNOSE] Storing token:", accessToken);
+      localStorage.setItem("authToken", accessToken);
+      toast.success("Login successful!");
+      // Fetch user info to get role
+      const meResponse = await authApi.me();
+      const role = meResponse.data.user?.role;
       switch (role) {
-        case 'admin':
-          navigate('/admin/dashboard');
+        case "admin":
+          navigate("/admin/dashboard");
           break;
-        case 'staff':
-          navigate('/staff/dashboard');
+        case "staff":
+          navigate("/staff/dashboard");
           break;
-        case 'aggregator':
-          navigate('/aggregator/dashboard');
+        case "aggregator":
+          navigate("/aggregator/dashboard");
+          break;
+        case "merchant":
+          navigate("/merchant/dashboard");
           break;
         default:
-          navigate('/');
+          navigate("/");
       }
-    } catch (error) {
-      setError(error.message || 'Login failed');
+    } catch (err) {
+      setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -83,7 +72,7 @@ const Login = () => {
         <div className="relative overflow-hidden rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl shadow-xl border border-gray-200 dark:border-gray-700">
           {/* Decorative background */}
           <div className="absolute -top-10 -right-10 h-40 w-40 bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-full" />
-          
+
           <div className="relative p-8">
             {/* Header */}
             <div className="text-center mb-8">
@@ -134,7 +123,7 @@ const Login = () => {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
@@ -147,7 +136,11 @@ const Login = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -171,10 +164,13 @@ const Login = () => {
               >
                 Forgot your password?
               </Link>
-              
+
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Don't have an account?{' '}
-                <Link to="/register" className="text-primary hover:text-blue-700 font-medium">
+                Don't have an account?{" "}
+                <Link
+                  to="/register"
+                  className="text-primary hover:text-blue-700 font-medium"
+                >
                   Create one
                 </Link>
               </div>

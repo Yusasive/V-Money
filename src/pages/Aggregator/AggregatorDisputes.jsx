@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { AlertTriangle, MessageSquare, Clock, CheckCircle } from 'lucide-react';
-import DashboardLayout from '../../components/Layout/DashboardLayout';
-import PageHeader from '../../components/UI/PageHeader';
-import Button from '../../components/UI/Button';
-import Badge from '../../components/UI/Badge';
-import Modal from '../../components/UI/Modal';
-import { disputesApi } from '../../api/client';
-import LoadingSpinner from '../../components/UI/LoadingSpinner';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { AlertTriangle, MessageSquare, Clock } from "lucide-react";
+import DashboardLayout from "../../components/Layout/DashboardLayout";
+import PageHeader from "../../components/UI/PageHeader";
+import Button from "../../components/UI/Button";
+import Badge from "../../components/UI/Badge";
+import Modal from "../../components/UI/Modal";
+import { disputesApi } from "../../api/client";
+import LoadingSpinner from "../../components/UI/LoadingSpinner";
+import toast from "react-hot-toast";
 
 const AggregatorDisputes = () => {
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState(null);
-  const [responseText, setResponseText] = useState('');
+  const [responseText, setResponseText] = useState("");
   const [submittingResponse, setSubmittingResponse] = useState(false);
 
   useEffect(() => {
@@ -27,8 +27,8 @@ const AggregatorDisputes = () => {
       const response = await disputesApi.list();
       setDisputes(response.data.disputes || []);
     } catch (error) {
-      console.error('Failed to fetch disputes:', error);
-      toast.error('Failed to load disputes');
+      console.error("Failed to fetch disputes:", error);
+      toast.error("Failed to load disputes");
     } finally {
       setLoading(false);
     }
@@ -41,13 +41,13 @@ const AggregatorDisputes = () => {
     try {
       setSubmittingResponse(true);
       await disputesApi.respond(selectedDispute.id, responseText);
-      toast.success('Response submitted successfully');
-      setResponseText('');
+      toast.success("Response submitted successfully");
+      setResponseText("");
       setSelectedDispute(null);
       await fetchDisputes();
     } catch (error) {
-      console.error('Failed to submit response:', error);
-      toast.error('Failed to submit response');
+      console.error("Failed to submit response:", error);
+      toast.error("Failed to submit response");
     } finally {
       setSubmittingResponse(false);
     }
@@ -55,12 +55,12 @@ const AggregatorDisputes = () => {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      open: { variant: 'danger', label: 'Open' },
-      in_review: { variant: 'warning', label: 'In Review' },
-      resolved: { variant: 'success', label: 'Resolved' },
+      open: { variant: "danger", label: "Open" },
+      in_review: { variant: "warning", label: "In Review" },
+      resolved: { variant: "success", label: "Resolved" },
     };
-    
-    const config = statusMap[status] || { variant: 'default', label: status };
+
+    const config = statusMap[status] || { variant: "default", label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -93,7 +93,7 @@ const AggregatorDisputes = () => {
               All Disputes ({disputes.length})
             </h3>
           </div>
-          
+
           <div className="p-6">
             {disputes.length === 0 ? (
               <div className="text-center py-12">
@@ -119,26 +119,27 @@ const AggregatorDisputes = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {dispute.title || 'Dispute'}
+                            {dispute.title || "Dispute"}
                           </h4>
                           {getStatusBadge(dispute.status)}
                         </div>
-                        
+
                         <p className="text-gray-600 dark:text-gray-400 mb-4">
                           {dispute.description}
                         </p>
-                        
+
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
-                            <User className="h-4 w-4" />
-                            Raised by: {dispute.created_by_name || 'Unknown'}
+                            {/* Fix: User is not defined. Remove or import if needed. */}
+                            Raised by: {dispute.created_by_name || "Unknown"}
                           </div>
-                          
+
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            Created: {new Date(dispute.created_at).toLocaleDateString()}
+                            Created:{" "}
+                            {new Date(dispute.created_at).toLocaleDateString()}
                           </div>
-                          
+
                           {dispute.responses?.length > 0 && (
                             <div className="flex items-center gap-1">
                               <MessageSquare className="h-4 w-4" />
@@ -147,7 +148,7 @@ const AggregatorDisputes = () => {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="flex gap-2 ml-4">
                         <Button
                           variant="outline"
@@ -156,14 +157,14 @@ const AggregatorDisputes = () => {
                         >
                           View Details
                         </Button>
-                        
-                        {dispute.status === 'open' && (
+
+                        {dispute.status === "open" && (
                           <Button
                             variant="primary"
                             size="sm"
                             onClick={() => {
                               setSelectedDispute(dispute);
-                              setResponseText('');
+                              setResponseText("");
                             }}
                             icon={MessageSquare}
                           >
@@ -184,7 +185,7 @@ const AggregatorDisputes = () => {
           isOpen={!!selectedDispute}
           onClose={() => {
             setSelectedDispute(null);
-            setResponseText('');
+            setResponseText("");
           }}
           title="Dispute Details"
           size="lg"
@@ -194,26 +195,26 @@ const AggregatorDisputes = () => {
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {selectedDispute.title || 'Dispute'}
+                    {selectedDispute.title || "Dispute"}
                   </h4>
                   {getStatusBadge(selectedDispute.status)}
                 </div>
-                
+
                 <p className="text-gray-600 dark:text-gray-400">
                   {selectedDispute.description}
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <h5 className="font-medium text-gray-900 dark:text-white mb-1">
                     Raised By
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {selectedDispute.created_by_name || 'Unknown'}
+                    {selectedDispute.created_by_name || "Unknown"}
                   </p>
                 </div>
-                
+
                 <div>
                   <h5 className="font-medium text-gray-900 dark:text-white mb-1">
                     Created
@@ -223,7 +224,7 @@ const AggregatorDisputes = () => {
                   </p>
                 </div>
               </div>
-              
+
               {/* Previous Responses */}
               {selectedDispute.responses?.length > 0 && (
                 <div>
@@ -247,9 +248,9 @@ const AggregatorDisputes = () => {
                   </div>
                 </div>
               )}
-              
+
               {/* Response Form */}
-              {selectedDispute.status === 'open' && (
+              {selectedDispute.status === "open" && (
                 <form onSubmit={handleSubmitResponse}>
                   <h5 className="font-medium text-gray-900 dark:text-white mb-3">
                     Your Response
@@ -262,19 +263,19 @@ const AggregatorDisputes = () => {
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     required
                   />
-                  
+
                   <div className="flex justify-end gap-3 mt-4">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => {
                         setSelectedDispute(null);
-                        setResponseText('');
+                        setResponseText("");
                       }}
                     >
                       Cancel
                     </Button>
-                    
+
                     <Button
                       type="submit"
                       loading={submittingResponse}

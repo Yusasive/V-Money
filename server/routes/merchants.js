@@ -1,5 +1,5 @@
 const express = require("express");
-const { supabaseAdmin } = require("../config/supabase");
+const { supabase } = require("../config/supabase");
 const { authenticateToken, requireRoles } = require("../middleware/auth");
 
 const router = express.Router();
@@ -8,7 +8,7 @@ const router = express.Router();
 router.patch("/me", authenticateToken, async (req, res) => {
   try {
     // First, verify that the user has a merchant profile
-    const { data: existingMerchant, error: checkError } = await supabaseAdmin
+    const { data: existingMerchant, error: checkError } = await supabase
       .from("merchants")
       .select("id")
       .eq("user_id", req.user.id)
@@ -49,7 +49,7 @@ router.patch("/me", authenticateToken, async (req, res) => {
 
     updates.updated_at = new Date().toISOString();
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("merchants")
       .update(updates)
       .eq("user_id", req.user.id)
@@ -78,7 +78,6 @@ router.post(
       const {
         username,
         business_name,
-        email,
         phone,
         address,
         business_address,
@@ -91,38 +90,32 @@ router.post(
         serial_no,
         user_id,
       } = req.body;
-      if (!username || !business_name || !email) {
-        return res
-          .status(400)
-          .json({ message: "username, business_name, email are required" });
-      }
-
-      const { data, error } = await supabaseAdmin
+      const merchantData = {
+        username,
+        business_name,
+        phone,
+        address,
+        business_address,
+        first_name,
+        middle_name,
+        last_name,
+        gender,
+        state,
+        lga,
+        serial_no,
+        user_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase
         .from("merchants")
-        .insert({
-          username,
-          business_name,
-          email,
-          phone: phone || null,
-          address: address || null,
-          business_address: business_address || null,
-          first_name: first_name || null,
-          middle_name: middle_name || null,
-          last_name: last_name || null,
-          gender: gender || null,
-          state: state || null,
-          lga: lga || null,
-          serial_no: serial_no || null,
-          user_id: user_id || null,
-        })
+        .insert([merchantData])
         .select()
         .single();
-
       if (error) {
         console.error("Create merchant error:", error);
         return res.status(500).json({ message: "Failed to create merchant" });
       }
-
       res.status(201).json({ message: "Merchant created", merchant: data });
     } catch (error) {
       console.error("Create merchant error:", error);
@@ -142,7 +135,6 @@ router.patch(
       const {
         username,
         business_name,
-        email,
         phone,
         address,
         business_address,
@@ -159,7 +151,6 @@ router.patch(
       const updates = { updated_at: new Date().toISOString() };
       if (username !== undefined) updates.username = username;
       if (business_name !== undefined) updates.business_name = business_name;
-      if (email !== undefined) updates.email = email;
       if (phone !== undefined) updates.phone = phone;
       if (address !== undefined) updates.address = address;
       if (business_address !== undefined)
@@ -173,7 +164,7 @@ router.patch(
       if (serial_no !== undefined) updates.serial_no = serial_no;
       if (status !== undefined) updates.status = status;
 
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from("merchants")
         .update(updates)
         .eq("id", id)
@@ -208,7 +199,7 @@ router.post(
           .json({ message: "txn_date and txn_count are required" });
       }
 
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from("merchant_transactions")
         .insert({
           merchant_id: id,
@@ -259,12 +250,10 @@ router.get(
       });
     } catch (error) {
       console.error("Cloudinary debug error:", error);
-      res
-        .status(500)
-        .json({
-          message: "Failed to fetch Cloudinary resources",
-          error: error.message,
-        });
+      res.status(500).json({
+        message: "Failed to fetch Cloudinary resources",
+        error: error.message,
+      });
     }
   }
 );
@@ -277,7 +266,7 @@ router.post(
   async (req, res) => {
     try {
       // Get all merchants with document URLs
-      const { data: merchants, error: fetchError } = await supabaseAdmin
+      const { data: merchants, error: fetchError } = await supabase
         .from("merchants")
         .select(
           "id, utility_bill_url, passport_url, business_pic_url, nin_slip_url"
@@ -358,7 +347,7 @@ router.post(
         if (needsUpdate) {
           updates.updated_at = new Date().toISOString();
 
-          const { error: updateError } = await supabaseAdmin
+          const { error: updateError } = await supabase
             .from("merchants")
             .update(updates)
             .eq("id", merchant.id);
@@ -398,7 +387,7 @@ router.get("/debug/user", authenticateToken, async (req, res) => {
       req.user.user_metadata?.role || req.user.app_metadata?.role || "user";
 
     // Check if user has merchant profile
-    const { data: merchantProfile, error } = await supabaseAdmin
+    const { data: merchantProfile, error } = await supabase
       .from("merchants")
       .select("*")
       .eq("user_id", req.user.id)
@@ -430,12 +419,12 @@ router.get("/:id", authenticateToken, async (req, res) => {
     // If "me" is requested, update last_activity_date and get the current user's merchant profile
     if (id === "me") {
       // Update last_activity_date to now
-      await supabaseAdmin
+      await supabase
         .from("merchants")
         .update({ last_activity_date: new Date().toISOString() })
         .eq("user_id", req.user.id);
 
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from("merchants")
         .select("*")
         .eq("user_id", req.user.id)
@@ -449,7 +438,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
     }
 
     // Otherwise, get merchant by ID (for staff/admin)
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("merchants")
       .select("*")
       .eq("id", id)

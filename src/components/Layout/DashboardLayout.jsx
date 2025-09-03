@@ -1,32 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  Home, 
-  Users, 
-  CheckSquare, 
-  AlertTriangle, 
-  Store, 
-  User, 
-  LogOut, 
-  Moon, 
-  Sun, 
-  Menu, 
+import React, { useState, useEffect } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Home,
+  Users,
+  CheckSquare,
+  AlertTriangle,
+  Store,
+  User,
+  LogOut,
+  Moon,
+  Sun,
+  Menu,
   X,
-  Settings
-} from 'lucide-react';
-import { authHelpers } from '../../config/supabase';
-import { authApi } from '../../api/client';
-import toast from 'react-hot-toast';
+  Settings,
+} from "lucide-react";
+import { authApi } from "../../api/client";
+import toast from "react-hot-toast";
 
 const DashboardLayout = ({ children, userRole }) => {
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || 
-           (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    return (
+      localStorage.getItem("theme") === "dark" ||
+      (!localStorage.getItem("theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
   });
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -36,8 +38,8 @@ const DashboardLayout = ({ children, userRole }) => {
         const response = await authApi.me();
         setUser(response.data.user);
       } catch (error) {
-        console.error('Failed to fetch user:', error);
-        navigate('/login');
+        console.error("Failed to fetch user:", error);
+        navigate("/login");
       }
     };
 
@@ -46,23 +48,23 @@ const DashboardLayout = ({ children, userRole }) => {
 
   useEffect(() => {
     if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }, [isDark]);
 
   const handleLogout = async () => {
     try {
-      await authHelpers.signOut();
-      localStorage.removeItem('authToken');
-      toast.success('Logged out successfully');
-      navigate('/login');
+      await authApi.logout();
+      localStorage.removeItem("authToken");
+      toast.success("Logged out successfully");
+      navigate("/login");
     } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('Logout failed');
+      console.error("Logout error:", error);
+      toast.error("Logout failed");
     }
   };
 
@@ -73,39 +75,39 @@ const DashboardLayout = ({ children, userRole }) => {
   // Navigation items based on role
   const getNavigationItems = () => {
     const baseItems = [
-      { name: 'Dashboard', href: '', icon: Home, end: true },
-      { name: 'Profile', href: '/profile', icon: User },
+      { name: "Dashboard", href: "", icon: Home, end: true },
+      { name: "Profile", href: "/profile", icon: User },
     ];
 
     switch (userRole) {
-      case 'admin':
+      case "admin":
         return [
           ...baseItems.slice(0, 1), // Dashboard only
-          { name: 'User Management', href: '/users', icon: Users },
-          { name: 'Tasks', href: '/tasks', icon: CheckSquare },
-          { name: 'Disputes', href: '/disputes', icon: AlertTriangle },
-          { name: 'Merchants', href: '/merchants', icon: Store },
-          { name: 'Content', href: '/content', icon: Settings },
+          { name: "User Management", href: "/users", icon: Users },
+          { name: "Tasks", href: "/tasks", icon: CheckSquare },
+          { name: "Disputes", href: "/disputes", icon: AlertTriangle },
+          { name: "Merchants", href: "/merchants", icon: Store },
+          { name: "Content", href: "/content", icon: Settings },
           ...baseItems.slice(1), // Profile
         ];
-      
-      case 'staff':
+
+      case "staff":
         return [
           ...baseItems.slice(0, 1), // Dashboard only
-          { name: 'Tasks', href: '/tasks', icon: CheckSquare },
-          { name: 'Disputes', href: '/disputes', icon: AlertTriangle },
-          { name: 'Merchants', href: '/merchants', icon: Store },
+          { name: "Tasks", href: "/tasks", icon: CheckSquare },
+          { name: "Disputes", href: "/disputes", icon: AlertTriangle },
+          { name: "Merchants", href: "/merchants", icon: Store },
           ...baseItems.slice(1), // Profile
         ];
-      
-      case 'aggregator':
+
+      case "aggregator":
         return [
           ...baseItems.slice(0, 1), // Dashboard only
-          { name: 'Tasks', href: '/tasks', icon: CheckSquare },
-          { name: 'Disputes', href: '/disputes', icon: AlertTriangle },
+          { name: "Tasks", href: "/tasks", icon: CheckSquare },
+          { name: "Disputes", href: "/disputes", icon: AlertTriangle },
           ...baseItems.slice(1), // Profile
         ];
-      
+
       default:
         return baseItems;
     }
@@ -118,7 +120,7 @@ const DashboardLayout = ({ children, userRole }) => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -127,7 +129,7 @@ const DashboardLayout = ({ children, userRole }) => {
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ x: sidebarOpen ? 0 : '-100%' }}
+        animate={{ x: sidebarOpen ? 0 : "-100%" }}
         className={`
           fixed top-0 left-0 z-50 h-full w-64 bg-white/80 dark:bg-gray-800/80 
           backdrop-blur-xl border-r border-gray-200 dark:border-gray-700
@@ -158,7 +160,7 @@ const DashboardLayout = ({ children, userRole }) => {
             {navigationItems.map((item) => {
               const Icon = item.icon;
               const href = `${basePath}${item.href}`;
-              const isActive = item.end 
+              const isActive = item.end
                 ? location.pathname === basePath
                 : location.pathname.startsWith(href);
 
@@ -169,9 +171,10 @@ const DashboardLayout = ({ children, userRole }) => {
                   end={item.end}
                   className={`
                     flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-                    ${isActive 
-                      ? 'bg-primary text-white shadow-sm' 
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                    ${
+                      isActive
+                        ? "bg-primary text-white shadow-sm"
+                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                     }
                   `}
                   onClick={() => setSidebarOpen(false)}
@@ -198,16 +201,20 @@ const DashboardLayout = ({ children, userRole }) => {
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleTheme}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                {isDark ? 'Light' : 'Dark'}
+                {isDark ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+                {isDark ? "Light" : "Dark"}
               </button>
-              
+
               <button
                 onClick={handleLogout}
                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -231,14 +238,14 @@ const DashboardLayout = ({ children, userRole }) => {
             >
               <Menu className="h-5 w-5" />
             </button>
-            
+
             <div className="flex items-center gap-4 ml-auto">
               <div className="hidden sm:block text-right">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Welcome back,
                 </p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {user?.email?.split('@')[0] || 'User'}
+                  {user?.email?.split("@")[0] || "User"}
                 </p>
               </div>
             </div>
@@ -246,9 +253,7 @@ const DashboardLayout = ({ children, userRole }) => {
         </header>
 
         {/* Page content */}
-        <main className="p-6">
-          {children}
-        </main>
+        <main className="p-6">{children}</main>
       </div>
     </div>
   );

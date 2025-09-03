@@ -71,7 +71,7 @@ const Navbar = () => {
             <div className="flex flex-row lg:flex-row justify-center py-5 space-x-6">
               <Link
                 className="bg-[#eff1fa] text-primary py-3 px-6 rounded-xl text-center hover:bg-[#e4e6ee]"
-                to="/admin/login"
+                to="/login"
               >
                 Login
               </Link>
@@ -154,7 +154,7 @@ const Navbar = () => {
         >
           <Link
             className="bg-[#f5c58a] text-white py-3 px-6 rounded-xl text-center w-full hover:bg-[#FF8C00]"
-            to="/admin/login"
+            to="/login"
           >
             Login
           </Link>

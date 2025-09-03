@@ -1,5 +1,5 @@
 const express = require("express");
-const { supabaseAdmin } = require("../config/supabase");
+const { supabase } = require("../config/supabase");
 const {
   authenticateToken,
   requireRoles,
@@ -24,7 +24,7 @@ router.post(
       }
 
       // Validate assignee role (Only Staff and Aggregators)
-      const { data: assignee, error: assigneeErr } = await supabaseAdmin
+      const { data: assignee, error: assigneeErr } = await supabase
         .from("profiles")
         .select("id, role")
         .eq("id", assigned_to)
@@ -35,14 +35,12 @@ router.post(
       }
 
       if (!["staff", "aggregator"].includes(assignee.role)) {
-        return res
-          .status(400)
-          .json({
-            message: "Tasks can only be assigned to Staff or Aggregators",
-          });
+        return res.status(400).json({
+          message: "Tasks can only be assigned to Staff or Aggregators",
+        });
       }
 
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from("tasks")
         .insert({
           title,
@@ -78,7 +76,7 @@ router.get(
   async (req, res) => {
     try {
       const { assigned_to, status, page = 1, limit = 20 } = req.query;
-      let query = supabaseAdmin
+      let query = supabase
         .from("tasks")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
@@ -112,7 +110,7 @@ router.get(
 // Get tasks assigned to current user
 router.get("/assigned", authenticateToken, async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("tasks")
       .select("*")
       .eq("assigned_to", req.user.id)
@@ -136,7 +134,7 @@ router.patch("/:id/done", authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     // Fetch task
-    const { data: task, error: fetchErr } = await supabaseAdmin
+    const { data: task, error: fetchErr } = await supabase
       .from("tasks")
       .select("*")
       .eq("id", id)
@@ -155,7 +153,7 @@ router.patch("/:id/done", authenticateToken, async (req, res) => {
         .json({ message: "Not allowed to update this task" });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("tasks")
       .update({
         status: "done",

@@ -47,7 +47,7 @@ const MerchantDashboard = () => {
   const handleLogout = async () => {
     try {
       await authApi.logout();
-      localStorage.removeItem("adminToken");
+      localStorage.removeItem("authToken");
       window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);

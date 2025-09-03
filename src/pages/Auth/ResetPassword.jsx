@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FiLock, FiCheckCircle, FiEye, FiEyeOff } from "react-icons/fi";
-import { supabase } from "../../config/supabase";
+import { authApi } from "../../api/client";
 import { Link } from "react-router-dom";
 
 // Password reset page styled to match admin visuals
@@ -26,13 +26,14 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      await authApi.changePassword({ password });
       setMessage("Password updated. You can now sign in.");
       setPassword("");
       setConfirm("");
     } catch (e) {
-      setError(e.message || "Failed to update password");
+      setError(
+        e.response?.data?.message || e.message || "Failed to update password"
+      );
     } finally {
       setLoading(false);
     }

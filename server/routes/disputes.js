@@ -1,5 +1,5 @@
 const express = require("express");
-const { supabaseAdmin } = require("../config/supabase");
+const { supabase } = require("../config/supabase");
 const { authenticateToken, requireRoles } = require("../middleware/auth");
 
 const router = express.Router();
@@ -17,18 +17,15 @@ router.post(
           .status(400)
           .json({ message: "merchant_id and description are required" });
       }
-
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from("disputes")
         .insert({ merchant_id, description, assigned_to: assigned_to || null })
         .select()
         .single();
-
       if (error) {
         console.error("Create dispute error:", error);
         return res.status(500).json({ message: "Failed to log dispute" });
       }
-
       res.status(201).json({ message: "Dispute logged", dispute: data });
     } catch (error) {
       console.error("Create dispute error:", error);
@@ -45,7 +42,7 @@ router.get(
   async (req, res) => {
     try {
       const { status, merchant_id, page = 1, limit = 20 } = req.query;
-      let query = supabaseAdmin
+      let query = supabase
         .from("disputes")
         .select("*", { count: "exact" })
         .order("created_at", { ascending: false });
@@ -53,13 +50,11 @@ router.get(
       if (merchant_id) query = query.eq("merchant_id", merchant_id);
       const offset = (parseInt(page) - 1) * parseInt(limit);
       query = query.range(offset, offset + parseInt(limit) - 1);
-
       const { data, error, count } = await query;
       if (error) {
         console.error("List disputes error:", error);
         return res.status(500).json({ message: "Failed to fetch disputes" });
       }
-
       res.json({
         disputes: data || [],
         pagination: {
@@ -97,7 +92,7 @@ router.patch(
       }
       if (assigned_to !== undefined) updates.assigned_to = assigned_to;
 
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from("disputes")
         .update(updates)
         .eq("id", id)

@@ -1,139 +1,84 @@
 const express = require("express");
-const multer = require("multer");
-const { authenticateToken, requireAdmin } = require("../middleware/auth");
-const {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-  getCloudinaryResources,
-} = require("../utils/cloudinary");
+const { cloudinary, upload } = require("../config/cloudinary");
+const { authenticateToken, requireRoles } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Allow images, documents, and common file types
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|csv|xlsx|xls/;
-    const extname = allowedTypes.test(file.originalname.toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(
-        new Error(
-          "Invalid file type. Only images, PDFs, and documents are allowed."
-        )
-      );
-    }
-  },
-});
-
-// Upload single file (Admin only)
+// Upload single file
 router.post(
   "/single",
   authenticateToken,
-  requireAdmin,
+  requireRoles(["admin", "staff"]),
   upload.single("file"),
-  async (req, res) => {
+  (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ message: "No file provided" });
+        return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const result = await uploadToCloudinary(
-        req.file.buffer,
-        req.file.originalname
-      );
-
       res.json({
-        message: "File uploaded successfully",
-        file: result,
+        url: req.file.path,
+        publicId: req.file.filename,
+        originalName: req.file.originalname,
       });
     } catch (error) {
-      console.error("Single file upload error:", error);
-      res.status(500).json({
-        message: error.message || "File upload failed",
-      });
+      res.status(500).json({ message: "Upload failed" });
     }
   }
 );
 
-// Upload multiple files (Admin only)
+// Upload multiple files
 router.post(
   "/multiple",
   authenticateToken,
-  requireAdmin,
+  requireRoles(["admin", "staff"]),
   upload.array("files", 10),
-  async (req, res) => {
+  (req, res) => {
     try {
       if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ message: "No files provided" });
+        return res.status(400).json({ message: "No files uploaded" });
       }
 
-      const uploadPromises = req.files.map((file) =>
-        uploadToCloudinary(file.buffer, file.originalname)
-      );
+      const files = req.files.map((file) => ({
+        url: file.path,
+        publicId: file.filename,
+        originalName: file.originalname,
+      }));
 
-      const results = await Promise.all(uploadPromises);
-
-      res.json({
-        message: "Files uploaded successfully",
-        files: results,
-      });
+      res.json({ files });
     } catch (error) {
-      console.error("Multiple file upload error:", error);
-      res.status(500).json({
-        message: error.message || "File upload failed",
-      });
+      res.status(500).json({ message: "Upload failed" });
     }
   }
 );
 
-// Get uploaded files list (Admin only)
-router.get("/list", authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { nextCursor } = req.query;
-
-    const result = await getCloudinaryResources(nextCursor);
-
-    res.json({
-      resources: result.resources,
-      nextCursor: result.next_cursor,
-      totalCount: result.total_count,
-    });
-  } catch (error) {
-    console.error("Get files list error:", error);
-    res.status(500).json({ message: "Failed to fetch files" });
-  }
-});
-
-// Delete file (Admin only)
-router.delete(
-  "/:publicId",
+// List images from Cloudinary (basic browser)
+router.get(
+  "/list",
   authenticateToken,
-  requireAdmin,
+  requireRoles(["admin", "staff"]),
   async (req, res) => {
     try {
-      const { publicId } = req.params;
+      const { nextCursor } = req.query;
+      const result = await cloudinary.search
+        .expression("folder:vmonie")
+        .max_results(50)
+        .next_cursor(nextCursor || undefined)
+        .execute();
 
-      // Decode the public ID (it might be URL encoded)
-      const decodedPublicId = decodeURIComponent(publicId);
+      const files = (result.resources || []).map((r) => ({
+        url: r.secure_url,
+        publicId: r.public_id,
+        format: r.format,
+        bytes: r.bytes,
+        width: r.width,
+        height: r.height,
+        createdAt: r.created_at,
+      }));
 
-      const result = await deleteFromCloudinary(decodedPublicId);
-
-      if (result.result === "ok") {
-        res.json({ message: "File deleted successfully" });
-      } else {
-        res.status(404).json({ message: "File not found" });
-      }
+      res.json({ files, nextCursor: result.next_cursor || null });
     } catch (error) {
-      console.error("Delete file error:", error);
-      res.status(500).json({ message: "Failed to delete file" });
+      res.status(500).json({ message: "Failed to list files" });
     }
   }
 );

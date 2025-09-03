@@ -33,7 +33,7 @@ const AdminDashboard = () => {
       const response = await authApi.me();
       setUser(response.data.user);
     } catch (error) {
-      localStorage.removeItem("adminToken");
+      localStorage.removeItem("authToken");
       navigate("/admin/login");
     }
   }, [navigate]);
@@ -60,7 +60,7 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
+    const token = localStorage.getItem("authToken");
     if (!token) {
       navigate("/admin/login");
       return;
@@ -71,7 +71,7 @@ const AdminDashboard = () => {
   }, [navigate, fetchUserData, fetchStats]);
 
   const handleLogout = () => {
-    localStorage.removeItem("adminToken");
+    localStorage.removeItem("authToken");
     navigate("/admin/login");
   };
 

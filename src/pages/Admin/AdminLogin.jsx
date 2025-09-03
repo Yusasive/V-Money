@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiLogIn, FiMail, FiLock } from "react-icons/fi";
-import { authHelpers } from "../../config/supabase";
+import { authApi } from "../../api/client";
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -20,25 +20,25 @@ const AdminLogin = () => {
     setError("");
 
     try {
-      const { data, error: signInError } = await authHelpers.signIn(
-        formData.email,
-        formData.password
-      );
-
-      if (signInError) {
-        setError(signInError.message || "Login failed");
-        return;
+      const response = await authApi.login(formData);
+      const accessToken = response.data?.session?.access_token;
+      if (!accessToken) {
+        throw new Error("No access token returned");
       }
-
-      if (!authHelpers.isAdmin(data.user)) {
+      localStorage.setItem("authToken", accessToken);
+      // Fetch user info to check admin role
+      const meResponse = await authApi.me();
+      const role = meResponse?.data?.user?.role;
+      if (role !== "admin") {
         setError("Admin access required");
-        await authHelpers.signOut();
+        try {
+          await authApi.logout();
+        } catch {}
         return;
       }
-
       navigate("/admin/dashboard");
-    } catch (error) {
-      setError(error.message || "Login failed");
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Login failed");
     } finally {
       setLoading(false);
     }
