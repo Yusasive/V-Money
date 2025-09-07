@@ -1,178 +1,224 @@
-const express = require("express");
-const { supabase } = require("../config/supabase");
-const {
-  authenticateToken,
-  requireRoles,
-  getUserRole,
-} = require("../middleware/auth");
+const express = require('express');
+const Task = require('../models/Task');
+const User = require('../models/User');
+const { authenticateToken, requireRoles } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Create task (Staff/Admin)
-router.post(
-  "/",
-  authenticateToken,
-  requireRoles(["staff", "admin"]),
-  async (req, res) => {
-    try {
-      const { title, description, assigned_to, due_date } = req.body;
-
-      if (!title || !assigned_to) {
-        return res
-          .status(400)
-          .json({ message: "title and assigned_to are required" });
-      }
-
-      // Validate assignee role (Only Staff and Aggregators)
-      const { data: assignee, error: assigneeErr } = await supabase
-        .from("profiles")
-        .select("id, role")
-        .eq("id", assigned_to)
-        .single();
-
-      if (assigneeErr || !assignee) {
-        return res.status(400).json({ message: "Assigned user not found" });
-      }
-
-      if (!["staff", "aggregator"].includes(assignee.role)) {
-        return res.status(400).json({
-          message: "Tasks can only be assigned to Staff or Aggregators",
-        });
-      }
-
-      const { data, error } = await supabase
-        .from("tasks")
-        .insert({
-          title,
-          description: description || null,
-          assigned_to,
-          due_date: due_date ? new Date(due_date).toISOString() : null,
-          created_by: req.user.id,
-          status: "pending",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Create task error:", error);
-        return res.status(500).json({ message: "Failed to create task" });
-      }
-
-      res.status(201).json({ message: "Task created", task: data });
-    } catch (error) {
-      console.error("Create task error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// List tasks (Staff/Admin) with optional filters
-router.get(
-  "/",
-  authenticateToken,
-  requireRoles(["staff", "admin"]),
-  async (req, res) => {
-    try {
-      const { assigned_to, status, page = 1, limit = 20 } = req.query;
-      let query = supabase
-        .from("tasks")
-        .select("*", { count: "exact" })
-        .order("created_at", { ascending: false });
-      if (assigned_to) query = query.eq("assigned_to", assigned_to);
-      if (status) query = query.eq("status", status);
-      const offset = (parseInt(page) - 1) * parseInt(limit);
-      query = query.range(offset, offset + parseInt(limit) - 1);
-
-      const { data, error, count } = await query;
-      if (error) {
-        console.error("List tasks error:", error);
-        return res.status(500).json({ message: "Failed to fetch tasks" });
-      }
-
-      res.json({
-        tasks: data || [],
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: count,
-          pages: Math.ceil((count || 0) / parseInt(limit)),
-        },
-      });
-    } catch (error) {
-      console.error("List tasks error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Get tasks assigned to current user
-router.get("/assigned", authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, requireRoles(['staff', 'admin']), async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("assigned_to", req.user.id)
-      .order("created_at", { ascending: false });
+    const { title, description, assigned_to, due_date, priority } = req.body;
 
-    if (error) {
-      console.error("Assigned tasks error:", error);
-      return res.status(500).json({ message: "Failed to fetch tasks" });
+    if (!title || !assigned_to) {
+      return res.status(400).json({ message: 'Title and assigned_to are required' });
     }
 
-    res.json({ tasks: data || [] });
+    // Validate assignee exists and has appropriate role
+    const assignee = await User.findById(assigned_to);
+    if (!assignee) {
+      return res.status(400).json({ message: 'Assigned user not found' });
+    }
+
+    if (!['staff', 'aggregator'].includes(assignee.role)) {
+      return res.status(400).json({ 
+        message: 'Tasks can only be assigned to Staff or Aggregators' 
+      });
+    }
+
+    const task = new Task({
+      title,
+      description: description || null,
+      assignedTo: assigned_to,
+      createdBy: req.user._id,
+      dueDate: due_date ? new Date(due_date) : null,
+      priority: priority || 'medium'
+    });
+
+    await task.save();
+    await task.populate(['assignedTo', 'createdBy'], 'fullName email username');
+
+    res.status(201).json({ 
+      message: 'Task created successfully',
+      task 
+    });
+
   } catch (error) {
-    console.error("Assigned tasks error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error('Create task error:', error);
+    res.status(500).json({ message: 'Failed to create task' });
   }
 });
 
-// Mark task as done (assignee or Staff/Admin)
-router.patch("/:id/done", authenticateToken, async (req, res) => {
+// List tasks (Staff/Admin with filters)
+router.get('/', authenticateToken, requireRoles(['staff', 'admin']), async (req, res) => {
+  try {
+    const { 
+      assigned_to, 
+      status, 
+      priority,
+      page = 1, 
+      limit = 20 
+    } = req.query;
+
+    const query = {};
+    if (assigned_to) query.assignedTo = assigned_to;
+    if (status) query.status = status;
+    if (priority) query.priority = priority;
+
+    const tasks = await Task.find(query)
+      .populate('assignedTo', 'fullName email username')
+      .populate('createdBy', 'fullName email username')
+      .populate('approvedBy', 'fullName email username')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Task.countDocuments(query);
+
+    res.json({
+      tasks,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('List tasks error:', error);
+    res.status(500).json({ message: 'Failed to fetch tasks' });
+  }
+});
+
+// Get tasks assigned to current user
+router.get('/assigned', authenticateToken, async (req, res) => {
+  try {
+    const tasks = await Task.find({ assignedTo: req.user._id })
+      .populate('createdBy', 'fullName email username')
+      .populate('approvedBy', 'fullName email username')
+      .sort({ createdAt: -1 });
+
+    res.json({ tasks });
+
+  } catch (error) {
+    console.error('Assigned tasks error:', error);
+    res.status(500).json({ message: 'Failed to fetch assigned tasks' });
+  }
+});
+
+// Mark task as done (assignee only)
+router.patch('/:id/done', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Fetch task
-    const { data: task, error: fetchErr } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (fetchErr || !task) {
-      return res.status(404).json({ message: "Task not found" });
+    const task = await Task.findById(id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
     }
 
-    const role = getUserRole(req.user);
-    const canUpdate =
-      task.assigned_to === req.user.id || ["staff", "admin"].includes(role);
-    if (!canUpdate) {
-      return res
-        .status(403)
-        .json({ message: "Not allowed to update this task" });
+    // Only assignee can mark as done
+    if (task.assignedTo.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Only the assignee can mark this task as done' });
     }
 
-    const { data, error } = await supabase
-      .from("tasks")
-      .update({
-        status: "done",
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Update task error:", error);
-      return res.status(500).json({ message: "Failed to update task" });
+    if (task.status === 'completed') {
+      return res.status(400).json({ message: 'Task is already completed' });
     }
 
-    res.json({ message: "Task marked as done", task: data });
+    task.status = 'done';
+    task.completedAt = new Date();
+    await task.save();
+
+    await task.populate(['assignedTo', 'createdBy'], 'fullName email username');
+
+    res.json({ 
+      message: 'Task marked as done. Waiting for approval.',
+      task 
+    });
+
   } catch (error) {
-    console.error("Update task error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error('Mark task done error:', error);
+    res.status(500).json({ message: 'Failed to mark task as done' });
+  }
+});
+
+// Approve task (Staff/Admin or task creator)
+router.patch('/:id/approve', authenticateToken, requireRoles(['staff', 'admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const task = await Task.findById(id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (task.status !== 'done') {
+      return res.status(400).json({ message: 'Task must be marked as done before approval' });
+    }
+
+    task.status = 'completed';
+    task.approvedBy = req.user._id;
+    task.approvedAt = new Date();
+    await task.save();
+
+    await task.populate(['assignedTo', 'createdBy', 'approvedBy'], 'fullName email username');
+
+    res.json({ 
+      message: 'Task approved successfully',
+      task 
+    });
+
+  } catch (error) {
+    console.error('Approve task error:', error);
+    res.status(500).json({ message: 'Failed to approve task' });
+  }
+});
+
+// Reject task (Staff/Admin or task creator)
+router.patch('/:id/reject', authenticateToken, requireRoles(['staff', 'admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const task = await Task.findById(id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    task.status = 'rejected';
+    task.notes = reason || 'Task rejected';
+    task.completedAt = null; // Reset completion time
+    await task.save();
+
+    await task.populate(['assignedTo', 'createdBy'], 'fullName email username');
+
+    res.json({ 
+      message: 'Task rejected',
+      task 
+    });
+
+  } catch (error) {
+    console.error('Reject task error:', error);
+    res.status(500).json({ message: 'Failed to reject task' });
+  }
+});
+
+// Delete task (Admin only)
+router.delete('/:id', authenticateToken, requireRoles(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const task = await Task.findByIdAndDelete(id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    res.json({ message: 'Task deleted successfully' });
+
+  } catch (error) {
+    console.error('Delete task error:', error);
+    res.status(500).json({ message: 'Failed to delete task' });
   }
 });
 

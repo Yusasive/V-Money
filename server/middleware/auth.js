@@ -1,51 +1,70 @@
-// Supabase-based authentication and role middleware
-const { authHelpers } = require("../config/supabase");
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-// Verify Authorization: Bearer <access_token> using Supabase
+// Verify JWT token and attach user to request
 const authenticateToken = async (req, res, next) => {
   try {
-    const header = req.header("Authorization") || req.headers["authorization"];
-    const token = header?.replace("Bearer ", "");
+    const authHeader = req.header('Authorization') || req.headers['authorization'];
+    const token = authHeader?.replace('Bearer ', '');
 
     if (!token) {
-      return res.status(401).json({ message: "No token provided" });
+      return res.status(401).json({ message: 'No token provided' });
     }
 
-    const { data: user, error } = await authHelpers.getCurrentUser(token);
-    if (error || !user) {
-      return res.status(401).json({ message: "Invalid token" });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token - user not found' });
     }
 
-    // Normalize and attach user + role to request
+    if (user.status === 'suspended') {
+      return res.status(403).json({ message: 'Account suspended' });
+    }
+
     req.user = user;
-    req.user.role = authHelpers.getUserRole(user);
-
-    return next();
-  } catch (err) {
-    console.error("authenticateToken error:", err);
-    return res.status(401).json({ message: "Invalid token" });
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return res.status(401).json({ message: 'Invalid token' });
   }
 };
 
-// Require one of the allowed roles present in Supabase user metadata
-const requireRoles =
-  (roles = []) =>
-  (req, res, next) => {
-    try {
-      const role =
-        req.user?.user_metadata?.role ||
-        req.user?.app_metadata?.role ||
-        req.user?.role;
-      if (!role || (roles.length && !roles.includes(role))) {
-        return res
-          .status(403)
-          .json({ message: "Forbidden: insufficient role" });
-      }
-      return next();
-    } catch (err) {
-      console.error("requireRoles error:", err);
-      return res.status(403).json({ message: "Forbidden" });
+// Require specific roles
+const requireRoles = (roles = []) => (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
-  };
 
-module.exports = { authenticateToken, requireRoles };
+    if (roles.length && !roles.includes(req.user.role)) {
+      return res.status(403).json({ 
+        message: `Access denied. Required roles: ${roles.join(', ')}` 
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Role authorization error:', error);
+    return res.status(403).json({ message: 'Access denied' });
+  }
+};
+
+// Admin only middleware
+const requireAdmin = requireRoles(['admin']);
+
+// Staff or Admin middleware
+const requireStaffOrAdmin = requireRoles(['staff', 'admin']);
+
+// Get user role helper
+const getUserRole = (user) => {
+  return user?.role || 'user';
+};
+
+module.exports = {
+  authenticateToken,
+  requireRoles,
+  requireAdmin,
+  requireStaffOrAdmin,
+  getUserRole
+};

@@ -1,30 +1,114 @@
-const { supabase } = require("../config/supabase");
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-// User management functions using Supabase
-// Example: createUser, getUserByEmail, etc.
+const userSchema = new mongoose.Schema({
+  fullName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true
+  },
+  phone: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    minlength: 3
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 8
+  },
+  role: {
+    type: String,
+    enum: ['admin', 'staff', 'aggregator', 'merchant'],
+    default: 'aggregator'
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'suspended', 'rejected'],
+    default: 'pending'
+  },
+  onboardingData: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
+  lastLogin: {
+    type: Date,
+    default: null
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    default: null
+  },
+  passwordResetToken: {
+    type: String,
+    default: null
+  },
+  passwordResetExpires: {
+    type: Date,
+    default: null
+  }
+}, {
+  timestamps: true
+});
 
-async function createUser(email, password, role = "admin") {
-  // Use Supabase Admin API to create a user (requires service role key)
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    user_metadata: { role },
-    email_confirm: true, // mark email as confirmed to allow immediate login
-  });
-  return { user: data?.user || null, error };
-}
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  try {
+    const salt = await bcrypt.genSalt(12);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
-async function getUserByEmail(email) {
-  // Query Supabase users table (if you have a custom table)
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("email", email)
-    .single();
-  return { data, error };
-}
-
-module.exports = {
-  createUser,
-  getUserByEmail,
+// Compare password method
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
+
+// Generate JWT token
+userSchema.methods.generateAuthToken = function() {
+  const jwt = require('jsonwebtoken');
+  return jwt.sign(
+    { 
+      id: this._id, 
+      email: this.email, 
+      role: this.role 
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+};
+
+// Remove password from JSON output
+userSchema.methods.toJSON = function() {
+  const user = this.toObject();
+  delete user.password;
+  delete user.emailVerificationToken;
+  delete user.passwordResetToken;
+  delete user.passwordResetExpires;
+  return user;
+};
+
+module.exports = mongoose.model('User', userSchema);

@@ -1,458 +1,345 @@
-const express = require("express");
-const { supabase } = require("../config/supabase");
-const { authenticateToken, requireRoles } = require("../middleware/auth");
+const express = require('express');
+const Merchant = require('../models/Merchant');
+const MerchantTransaction = require('../models/MerchantTransaction');
+const User = require('../models/User');
+const { authenticateToken, requireRoles } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Update own merchant profile (Merchant only)
-router.patch("/me", authenticateToken, async (req, res) => {
+// Create merchant (Staff/Admin)
+router.post('/', authenticateToken, requireRoles(['staff', 'admin']), async (req, res) => {
   try {
-    // First, verify that the user has a merchant profile
-    const { data: existingMerchant, error: checkError } = await supabase
-      .from("merchants")
-      .select("id")
-      .eq("user_id", req.user.id)
-      .single();
+    const {
+      username,
+      businessName,
+      email,
+      phone,
+      address,
+      businessAddress,
+      firstName,
+      middleName,
+      lastName,
+      gender,
+      state,
+      lga,
+      bvn,
+      nin,
+      serialNo,
+      userId
+    } = req.body;
 
-    if (checkError || !existingMerchant) {
-      return res.status(403).json({
-        message: "Access denied. No merchant profile found for this user.",
-      });
-    }
-
-    const updates = {};
-    // Basic info
-    if (req.body.business_name !== undefined)
-      updates.business_name = req.body.business_name;
-    if (req.body.phone !== undefined) updates.phone = req.body.phone;
-    if (req.body.address !== undefined) updates.address = req.body.address;
-    if (req.body.business_address !== undefined)
-      updates.business_address = req.body.business_address;
-
-    // Personal information
-    if (req.body.first_name !== undefined)
-      updates.first_name = req.body.first_name;
-    if (req.body.middle_name !== undefined)
-      updates.middle_name = req.body.middle_name;
-    if (req.body.last_name !== undefined)
-      updates.last_name = req.body.last_name;
-    if (req.body.gender !== undefined) updates.gender = req.body.gender;
-    if (req.body.state !== undefined) updates.state = req.body.state;
-    if (req.body.lga !== undefined) updates.lga = req.body.lga;
-
-    // Business information
-    if (req.body.serial_no !== undefined)
-      updates.serial_no = req.body.serial_no;
-
-    // Note: BVN, NIN, and document URLs are typically not updated after initial registration
-    // for security and compliance reasons, but can be added if needed
-
-    updates.updated_at = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from("merchants")
-      .update(updates)
-      .eq("user_id", req.user.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Update own merchant error:", error);
-      return res.status(500).json({ message: "Failed to update profile" });
-    }
-
-    res.json({ message: "Profile updated", merchant: data });
-  } catch (error) {
-    console.error("Update own merchant error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-// Create merchant profile (Staff/Admin)
-router.post(
-  "/",
-  authenticateToken,
-  requireRoles(["staff", "admin"]),
-  async (req, res) => {
-    try {
-      const {
-        username,
-        business_name,
-        phone,
-        address,
-        business_address,
-        first_name,
-        middle_name,
-        last_name,
-        gender,
-        state,
-        lga,
-        serial_no,
-        user_id,
-      } = req.body;
-      const merchantData = {
-        username,
-        business_name,
-        phone,
-        address,
-        business_address,
-        first_name,
-        middle_name,
-        last_name,
-        gender,
-        state,
-        lga,
-        serial_no,
-        user_id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      const { data, error } = await supabase
-        .from("merchants")
-        .insert([merchantData])
-        .select()
-        .single();
-      if (error) {
-        console.error("Create merchant error:", error);
-        return res.status(500).json({ message: "Failed to create merchant" });
-      }
-      res.status(201).json({ message: "Merchant created", merchant: data });
-    } catch (error) {
-      console.error("Create merchant error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Update merchant profile (Staff/Admin)
-router.patch(
-  "/:id",
-  authenticateToken,
-  requireRoles(["staff", "admin"]),
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const {
-        username,
-        business_name,
-        phone,
-        address,
-        business_address,
-        first_name,
-        middle_name,
-        last_name,
-        gender,
-        state,
-        lga,
-        serial_no,
-        status,
-      } = req.body;
-
-      const updates = { updated_at: new Date().toISOString() };
-      if (username !== undefined) updates.username = username;
-      if (business_name !== undefined) updates.business_name = business_name;
-      if (phone !== undefined) updates.phone = phone;
-      if (address !== undefined) updates.address = address;
-      if (business_address !== undefined)
-        updates.business_address = business_address;
-      if (first_name !== undefined) updates.first_name = first_name;
-      if (middle_name !== undefined) updates.middle_name = middle_name;
-      if (last_name !== undefined) updates.last_name = last_name;
-      if (gender !== undefined) updates.gender = gender;
-      if (state !== undefined) updates.state = state;
-      if (lga !== undefined) updates.lga = lga;
-      if (serial_no !== undefined) updates.serial_no = serial_no;
-      if (status !== undefined) updates.status = status;
-
-      const { data, error } = await supabase
-        .from("merchants")
-        .update(updates)
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Update merchant error:", error);
-        return res.status(500).json({ message: "Failed to update merchant" });
-      }
-
-      res.json({ message: "Merchant updated", merchant: data });
-    } catch (error) {
-      console.error("Update merchant error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Record daily merchant transactions (Staff/Admin)
-router.post(
-  "/:id/transactions",
-  authenticateToken,
-  requireRoles(["staff", "admin"]),
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { txn_date, txn_count } = req.body;
-      if (!txn_date || txn_count === undefined) {
-        return res
-          .status(400)
-          .json({ message: "txn_date and txn_count are required" });
-      }
-
-      const { data, error } = await supabase
-        .from("merchant_transactions")
-        .insert({
-          merchant_id: id,
-          txn_date,
-          txn_count: parseInt(txn_count, 10),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Create transaction error:", error);
-        return res
-          .status(500)
-          .json({ message: "Failed to record transaction" });
-      }
-
-      // Status auto-update handled by DB trigger
-      res
-        .status(201)
-        .json({ message: "Transaction recorded", transaction: data });
-    } catch (error) {
-      console.error("Create transaction error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Check what's actually on Cloudinary (Admin only)
-router.get(
-  "/debug/cloudinary",
-  authenticateToken,
-  requireRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const { getCloudinaryResources } = require("../utils/cloudinary");
-      const resources = await getCloudinaryResources();
-
-      res.json({
-        message: "Cloudinary resources",
-        totalCount: resources.resources.length,
-        resources: resources.resources.map((r) => ({
-          public_id: r.public_id,
-          secure_url: r.secure_url,
-          created_at: r.created_at,
-          bytes: r.bytes,
-          format: r.format,
-        })),
-      });
-    } catch (error) {
-      console.error("Cloudinary debug error:", error);
-      res.status(500).json({
-        message: "Failed to fetch Cloudinary resources",
-        error: error.message,
-      });
-    }
-  }
-);
-
-// Utility endpoint to fix document URLs (Admin only)
-router.post(
-  "/fix-document-urls",
-  authenticateToken,
-  requireRoles(["admin"]),
-  async (req, res) => {
-    try {
-      // Get all merchants with document URLs
-      const { data: merchants, error: fetchError } = await supabase
-        .from("merchants")
-        .select(
-          "id, utility_bill_url, passport_url, business_pic_url, nin_slip_url"
-        );
-
-      if (fetchError) {
-        console.error("Fetch merchants error:", fetchError);
-        return res.status(500).json({ message: "Failed to fetch merchants" });
-      }
-
-      let fixedCount = 0;
-      const results = [];
-
-      for (const merchant of merchants) {
-        const updates = {};
-        let needsUpdate = false;
-
-        // Helper function to extract and fix URL from object or JSON string
-        const extractAndFixUrl = (urlData) => {
-          if (!urlData) return null;
-
-          let extractedUrl = null;
-
-          // Extract URL from different formats
-          if (typeof urlData === "string" && !urlData.startsWith("{")) {
-            extractedUrl = urlData;
-          } else if (typeof urlData === "object" && urlData.url) {
-            extractedUrl = urlData.url;
-          } else if (typeof urlData === "string" && urlData.startsWith("{")) {
-            try {
-              const parsed = JSON.parse(urlData);
-              extractedUrl = parsed.url || null;
-            } catch (e) {
-              return null;
-            }
-          }
-
-          if (!extractedUrl) return null;
-
-          // Fix double folder issue: v-money/v-money/ -> v-money/
-          if (extractedUrl.includes("/v-money/v-money/")) {
-            extractedUrl = extractedUrl.replace(
-              "/v-money/v-money/",
-              "/v-money/"
-            );
-          }
-
-          // Clean up double extensions
-          if (extractedUrl.includes(".png.png")) {
-            extractedUrl = extractedUrl.replace(".png.png", ".png");
-          }
-          if (extractedUrl.includes(".jpg.jpg")) {
-            extractedUrl = extractedUrl.replace(".jpg.jpg", ".jpg");
-          }
-          if (extractedUrl.includes(".jpeg.jpeg")) {
-            extractedUrl = extractedUrl.replace(".jpeg.jpeg", ".jpeg");
-          }
-
-          return extractedUrl;
-        };
-
-        // Check each document URL
-        [
-          "utility_bill_url",
-          "passport_url",
-          "business_pic_url",
-          "nin_slip_url",
-        ].forEach((field) => {
-          const currentValue = merchant[field];
-          const fixedUrl = extractAndFixUrl(currentValue);
-
-          if (currentValue && fixedUrl && fixedUrl !== currentValue) {
-            updates[field] = fixedUrl;
-            needsUpdate = true;
-          }
-        });
-
-        if (needsUpdate) {
-          updates.updated_at = new Date().toISOString();
-
-          const { error: updateError } = await supabase
-            .from("merchants")
-            .update(updates)
-            .eq("id", merchant.id);
-
-          if (updateError) {
-            results.push({
-              id: merchant.id,
-              status: "error",
-              error: updateError.message,
-            });
-          } else {
-            results.push({ id: merchant.id, status: "fixed", updates });
-            fixedCount++;
-          }
-        } else {
-          results.push({ id: merchant.id, status: "no_changes_needed" });
-        }
-      }
-
-      res.json({
-        message: `Fixed ${fixedCount} merchant records`,
-        totalProcessed: merchants.length,
-        fixedCount,
-        results,
-      });
-    } catch (error) {
-      console.error("Fix document URLs error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  }
-);
-
-// Debug endpoint to check user info
-router.get("/debug/user", authenticateToken, async (req, res) => {
-  try {
-    const userRole =
-      req.user.user_metadata?.role || req.user.app_metadata?.role || "user";
-
-    // Check if user has merchant profile
-    const { data: merchantProfile, error } = await supabase
-      .from("merchants")
-      .select("*")
-      .eq("user_id", req.user.id)
-      .single();
-
-    res.json({
-      user: {
-        id: req.user.id,
-        email: req.user.email,
-        role: userRole,
-        user_metadata: req.user.user_metadata,
-        app_metadata: req.user.app_metadata,
-      },
-      merchantProfile: merchantProfile || null,
-      hasProfile: !!merchantProfile,
-      error: error?.message || null,
+    // Check if merchant already exists
+    const existingMerchant = await Merchant.findOne({
+      $or: [{ username }, { email }, { userId }]
     });
+
+    if (existingMerchant) {
+      return res.status(400).json({ message: 'Merchant already exists' });
+    }
+
+    const merchant = new Merchant({
+      userId,
+      username,
+      businessName,
+      email,
+      phone,
+      address,
+      businessAddress,
+      firstName,
+      middleName,
+      lastName,
+      gender,
+      state,
+      lga,
+      bvn,
+      nin,
+      serialNo
+    });
+
+    await merchant.save();
+    await merchant.populate('userId', 'fullName email');
+
+    res.status(201).json({ 
+      message: 'Merchant created successfully',
+      merchant 
+    });
+
   } catch (error) {
-    console.error("Debug user error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error('Create merchant error:', error);
+    res.status(500).json({ message: 'Failed to create merchant' });
   }
 });
 
-// Get merchant + status
-router.get("/:id", authenticateToken, async (req, res) => {
+// Get merchant profile
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // If "me" is requested, update last_activity_date and get the current user's merchant profile
-    if (id === "me") {
-      // Update last_activity_date to now
-      await supabase
-        .from("merchants")
-        .update({ last_activity_date: new Date().toISOString() })
-        .eq("user_id", req.user.id);
-
-      const { data, error } = await supabase
-        .from("merchants")
-        .select("*")
-        .eq("user_id", req.user.id)
-        .single();
-
-      if (error || !data) {
-        return res.status(404).json({ message: "Merchant profile not found" });
+    let merchant;
+    
+    if (id === 'me') {
+      // Get current user's merchant profile
+      merchant = await Merchant.findOne({ userId: req.user._id })
+        .populate('userId', 'fullName email');
+      
+      if (!merchant) {
+        return res.status(404).json({ message: 'Merchant profile not found' });
       }
 
-      return res.json({ data });
+      // Update last activity
+      merchant.lastActivityDate = new Date();
+      await merchant.save();
+    } else {
+      // Get merchant by ID (Staff/Admin only)
+      if (!['staff', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      merchant = await Merchant.findById(id)
+        .populate('userId', 'fullName email');
+      
+      if (!merchant) {
+        return res.status(404).json({ message: 'Merchant not found' });
+      }
     }
 
-    // Otherwise, get merchant by ID (for staff/admin)
-    const { data, error } = await supabase
-      .from("merchants")
-      .select("*")
-      .eq("id", id)
-      .single();
+    res.json({ data: merchant });
 
-    if (error || !data) {
-      return res.status(404).json({ message: "Merchant not found" });
-    }
-
-    res.json({ data });
   } catch (error) {
-    console.error("Get merchant error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error('Get merchant error:', error);
+    res.status(500).json({ message: 'Failed to fetch merchant' });
   }
 });
+
+// Update own merchant profile (Merchant only)
+router.patch('/me', authenticateToken, async (req, res) => {
+  try {
+    const updates = req.body;
+    
+    // Remove fields that shouldn't be updated directly
+    delete updates._id;
+    delete updates.userId;
+    delete updates.createdAt;
+    delete updates.updatedAt;
+    delete updates.bvn; // Security: BVN shouldn't be changed
+    delete updates.nin; // Security: NIN shouldn't be changed
+
+    const merchant = await Merchant.findOneAndUpdate(
+      { userId: req.user._id },
+      { ...updates, lastActivityDate: new Date() },
+      { new: true, runValidators: true }
+    ).populate('userId', 'fullName email');
+
+    if (!merchant) {
+      return res.status(404).json({ message: 'Merchant profile not found' });
+    }
+
+    res.json({ 
+      message: 'Profile updated successfully',
+      merchant 
+    });
+
+  } catch (error) {
+    console.error('Update merchant profile error:', error);
+    res.status(500).json({ message: 'Failed to update profile' });
+  }
+});
+
+// Update merchant (Staff/Admin)
+router.patch('/:id', authenticateToken, requireRoles(['staff', 'admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Remove fields that shouldn't be updated directly
+    delete updates._id;
+    delete updates.createdAt;
+    delete updates.updatedAt;
+
+    const merchant = await Merchant.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    ).populate('userId', 'fullName email');
+
+    if (!merchant) {
+      return res.status(404).json({ message: 'Merchant not found' });
+    }
+
+    res.json({ 
+      message: 'Merchant updated successfully',
+      merchant 
+    });
+
+  } catch (error) {
+    console.error('Update merchant error:', error);
+    res.status(500).json({ message: 'Failed to update merchant' });
+  }
+});
+
+// Record daily transactions (Staff/Admin)
+router.post('/:id/transactions', authenticateToken, requireRoles(['staff', 'admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { txn_date, txn_count, notes } = req.body;
+
+    if (!txn_date || txn_count === undefined) {
+      return res.status(400).json({ message: 'txn_date and txn_count are required' });
+    }
+
+    // Verify merchant exists
+    const merchant = await Merchant.findById(id);
+    if (!merchant) {
+      return res.status(404).json({ message: 'Merchant not found' });
+    }
+
+    const transaction = new MerchantTransaction({
+      merchantId: id,
+      transactionDate: new Date(txn_date),
+      transactionCount: parseInt(txn_count, 10),
+      recordedBy: req.user._id,
+      notes: notes || null
+    });
+
+    await transaction.save();
+
+    // Check if merchant should be flagged (less than 10 transactions for 7 consecutive days)
+    await checkAndFlagMerchant(id);
+
+    res.status(201).json({ 
+      message: 'Transaction recorded successfully',
+      transaction 
+    });
+
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Transaction already recorded for this date' 
+      });
+    }
+    console.error('Record transaction error:', error);
+    res.status(500).json({ message: 'Failed to record transaction' });
+  }
+});
+
+// Get merchant transactions
+router.get('/:id/transactions', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      startDate, 
+      endDate, 
+      page = 1, 
+      limit = 30 
+    } = req.query;
+
+    // Check permissions
+    const merchant = await Merchant.findById(id);
+    if (!merchant) {
+      return res.status(404).json({ message: 'Merchant not found' });
+    }
+
+    const isOwnProfile = merchant.userId.toString() === req.user._id.toString();
+    const canView = isOwnProfile || ['staff', 'admin'].includes(req.user.role);
+
+    if (!canView) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    let query = { merchantId: id };
+    
+    if (startDate || endDate) {
+      query.transactionDate = {};
+      if (startDate) query.transactionDate.$gte = new Date(startDate);
+      if (endDate) query.transactionDate.$lte = new Date(endDate);
+    }
+
+    const transactions = await MerchantTransaction.find(query)
+      .populate('recordedBy', 'fullName email username')
+      .sort({ transactionDate: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await MerchantTransaction.countDocuments(query);
+
+    res.json({
+      transactions,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get transactions error:', error);
+    res.status(500).json({ message: 'Failed to fetch transactions' });
+  }
+});
+
+// Get flagged merchants (Admin only)
+router.get('/flagged', authenticateToken, requireRoles(['admin']), async (req, res) => {
+  try {
+    const flaggedMerchants = await Merchant.find({ status: 'flagged' })
+      .populate('userId', 'fullName email')
+      .sort({ flaggedAt: -1 });
+
+    res.json({ merchants: flaggedMerchants });
+
+  } catch (error) {
+    console.error('Get flagged merchants error:', error);
+    res.status(500).json({ message: 'Failed to fetch flagged merchants' });
+  }
+});
+
+// Helper function to check and flag merchants
+async function checkAndFlagMerchant(merchantId) {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentTransactions = await MerchantTransaction.find({
+      merchantId,
+      transactionDate: { $gte: sevenDaysAgo }
+    }).sort({ transactionDate: -1 });
+
+    // Check if we have 7 consecutive days with less than 10 transactions
+    let consecutiveLowDays = 0;
+    const today = new Date();
+    
+    for (let i = 0; i < 7; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(checkDate.getDate() - i);
+      checkDate.setHours(0, 0, 0, 0);
+
+      const dayTransaction = recentTransactions.find(t => {
+        const tDate = new Date(t.transactionDate);
+        tDate.setHours(0, 0, 0, 0);
+        return tDate.getTime() === checkDate.getTime();
+      });
+
+      const dayCount = dayTransaction ? dayTransaction.transactionCount : 0;
+      
+      if (dayCount < 10) {
+        consecutiveLowDays++;
+      } else {
+        break; // Reset if we find a day with 10+ transactions
+      }
+    }
+
+    // Flag merchant if 7 consecutive days with <10 transactions
+    if (consecutiveLowDays >= 7) {
+      await Merchant.findByIdAndUpdate(merchantId, {
+        status: 'flagged',
+        flaggedAt: new Date(),
+        flaggedReason: 'Less than 10 transactions per day for 7 consecutive days'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error checking merchant flag status:', error);
+  }
+}
 
 module.exports = router;
