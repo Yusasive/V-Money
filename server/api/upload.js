@@ -1,12 +1,13 @@
 const { cloudinary } = require("../config/cloudinary");
 const { adminAuth } = require("../middleware/auth");
 
-//  Allowed origins
+// Allowed origins
 const allowedOrigins = [
   "http://localhost:3000",
   "https://vmonieweb.com",
   "https://www.vmonieweb.com",
-];
+  process.env.FRONTEND_URL
+].filter(Boolean);
 
 // Set CORS headers
 const setCORS = (req, res) => {
@@ -44,12 +45,14 @@ module.exports = async (req, res) => {
         if (!req.file) {
           return send(req, res, 400, { message: "No file uploaded" });
         }
+        
         return send(req, res, 200, {
           url: req.file.path,
           publicId: req.file.filename,
           originalName: req.file.originalname,
         });
       } catch (error) {
+        console.error('Single upload error:', error);
         return send(req, res, 500, { message: "Upload failed" });
       }
     });
@@ -62,13 +65,16 @@ module.exports = async (req, res) => {
         if (!req.files || req.files.length === 0) {
           return send(req, res, 400, { message: "No files uploaded" });
         }
+        
         const files = req.files.map((file) => ({
           url: file.path,
           publicId: file.filename,
           originalName: file.originalname,
         }));
+        
         return send(req, res, 200, { files });
       } catch (error) {
+        console.error('Multiple upload error:', error);
         return send(req, res, 500, { message: "Upload failed" });
       }
     });
@@ -100,6 +106,7 @@ module.exports = async (req, res) => {
           nextCursor: result.next_cursor || null,
         });
       } catch (error) {
+        console.error('List files error:', error);
         return send(req, res, 500, { message: "Failed to list files" });
       }
     });

@@ -1,6 +1,6 @@
 # V-Money: Advanced Role-Based Fintech Platform
 
-A comprehensive full-stack fintech platform with sophisticated role-based access control, built with React, Node.js, and MongoDB.
+A comprehensive full-stack fintech platform with sophisticated role-based access control, built with React, Node.js, Express, and MongoDB.
 
 ## 🌟 Features
 
@@ -38,25 +38,28 @@ A comprehensive full-stack fintech platform with sophisticated role-based access
 ## 🏗️ System Architecture
 
 ### Frontend Stack
-- **React 18** with functional components and hooks
+- **React 18** with functional components, hooks, and Context API
 - **React Router** for client-side routing
 - **Tailwind CSS** for styling
 - **Framer Motion** for animations
 - **Lucide React** for icons
 - **React Hot Toast** for notifications
+- **Axios** for HTTP requests
 
 ### Backend Stack
-- **Node.js** with Express.js
+- **Node.js** with Express.js framework
 - **MongoDB** with Mongoose ODM
 - **JWT** for authentication and session management
 - **Cloudinary** for file storage
 - **Nodemailer** for email notifications
+- **bcryptjs** for password hashing
 
 ### Database
-- **MongoDB** with Mongoose ODM
+- **MongoDB** with Mongoose ODM and schema validation
 - Comprehensive indexing for performance
 - Data validation and schema enforcement
 - Automated business logic with middleware
+- Connection pooling and optimization
 
 ---
 
@@ -736,6 +739,7 @@ Get merchant analytics (Admin/Staff)
 #### Frontend (.env)
 ```env
 REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_ENV=development
 ```
 
 #### Backend (server/.env)
@@ -943,7 +947,7 @@ This project is proprietary software. All rights reserved.
 ## 🔄 Version History
 
 ### v2.0.0 (Current)
-- **BREAKING**: Migrated from Supabase to MongoDB
+- **BREAKING**: Complete migration from Supabase to MongoDB
 - Complete role-based system implementation
 - Modern UI/UX with glassmorphism design
 - Enhanced security with JWT and bcrypt
@@ -951,9 +955,10 @@ This project is proprietary software. All rights reserved.
 - Mobile-responsive design
 - Auto-flagging system for merchants
 - Email notification system
+- Serverless function support for API endpoints
 
 ### v1.0.0
-- Initial release with Supabase
+- Initial release with Supabase (deprecated)
 - Basic admin dashboard
 - Simple content management
 - File upload capabilities
@@ -965,27 +970,33 @@ This project is proprietary software. All rights reserved.
 ### From Supabase to MongoDB
 
 #### Key Changes
-- **Database**: PostgreSQL → MongoDB with Mongoose
-- **Authentication**: Supabase Auth → JWT with bcrypt
-- **Schema**: SQL tables → MongoDB collections with schemas
-- **Queries**: SQL → MongoDB queries and aggregations
-- **Security**: RLS → Application-level role checking
+- **Database**: PostgreSQL (Supabase) → MongoDB with Mongoose ODM
+- **Authentication**: Supabase Auth → Custom JWT with bcryptjs
+- **Schema**: SQL tables → MongoDB collections with Mongoose schemas
+- **Queries**: SQL queries → MongoDB queries and aggregation pipelines
+- **Security**: Row Level Security (RLS) → Application-level middleware
+- **File Storage**: Supabase Storage → Cloudinary
+- **Real-time**: Supabase Realtime → Custom WebSocket implementation (future)
 
 #### Migration Benefits
-- **Full Control**: Complete control over database and authentication
-- **Flexibility**: More flexible schema design with MongoDB
-- **Performance**: Optimized queries with proper indexing
-- **Cost**: Potentially lower costs with self-hosted MongoDB
-- **Customization**: Custom authentication flows and business logic
+- **Full Control**: Complete control over database, authentication, and business logic
+- **Flexibility**: More flexible schema design with MongoDB's document model
+- **Performance**: Optimized queries with proper indexing and aggregation pipelines
+- **Cost Efficiency**: Lower operational costs with self-hosted MongoDB
+- **Customization**: Custom authentication flows, middleware, and business rules
+- **Scalability**: Better horizontal scaling with MongoDB sharding
+- **Development Speed**: Faster development with Mongoose ODM
 
 #### Breaking Changes
-- All API endpoints now use MongoDB ObjectIds instead of UUIDs
-- Authentication flow changed from Supabase to JWT
-- Database queries updated to use Mongoose syntax
-- Environment variables updated for MongoDB connection
+- **IDs**: All API endpoints now use MongoDB ObjectIds instead of UUIDs
+- **Authentication**: Complete authentication flow changed from Supabase to JWT
+- **Database**: All queries updated to use Mongoose syntax and MongoDB operators
+- **Environment**: Environment variables updated for MongoDB connection
+- **Dependencies**: Removed @supabase/supabase-js, added mongoose and related packages
+- **API Structure**: Serverless functions restructured for Express.js routing
 
 ---
 
 **Built with ❤️ by the V-Money Team**
 
-*Powered by MongoDB, Express.js, React, and Node.js (MERN Stack)*
+*Powered by MongoDB, Express.js, React, and Node.js (MERN Stack) with Cloudinary and JWT Authentication*

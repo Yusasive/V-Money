@@ -10,7 +10,7 @@ function resolveApiBaseUrl() {
     if (typeof window !== "undefined") {
       const { hostname } = window.location;
       const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
-      return isLocal ? "http://localhost:5000/api" : "/api"; // same-origin in prod
+      return isLocal ? "http://localhost:5000/api" : "/api";
     }
   } catch {}
   return "http://localhost:5000/api";
@@ -18,28 +18,24 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
-const api = axios.create({ baseURL: API_BASE_URL });
+const api = axios.create({ 
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 // Attach token from localStorage on every request
 api.interceptors.request.use((config) => {
   try {
-    const raw = localStorage.getItem("authToken");
-    console.log("[DIAGNOSE] localStorage.getItem('authToken'):", raw);
-    const token = typeof window !== "undefined" ? raw : null;
+    const token = localStorage.getItem("authToken");
     if (token) {
       config.headers = config.headers || {};
       config.headers["Authorization"] = `Bearer ${token}`;
-      console.log(
-        "[DIAGNOSE] Axios sending Authorization header:",
-        config.headers["Authorization"]
-      );
-    } else {
-      console.log(
-        "[DIAGNOSE] No token found, not setting Authorization header."
-      );
     }
   } catch (e) {
-    console.log("[DIAGNOSE] Error in Axios interceptor:", e);
+    console.error("Error in request interceptor:", e);
   }
   return config;
 });
@@ -63,6 +59,7 @@ export const authApi = {
   logout: () => api.post("/auth/logout"),
   me: () => api.get("/auth/me"),
   forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
+  resetPassword: (data) => api.post("/auth/reset-password", data),
   changePassword: (data) => api.post("/auth/change-password", data),
 };
 
@@ -71,8 +68,8 @@ export const usersApi = {
   list: (params = {}) => api.get("/users", { params }),
   get: (id) => api.get(`/users/${id}`),
   approve: (id) => api.patch(`/users/${id}/approve`),
-  reject: (id) => api.patch(`/users/${id}/reject`),
-  suspend: (id) => api.patch(`/users/${id}/suspend`),
+  reject: (id, reason) => api.patch(`/users/${id}/reject`, { reason }),
+  suspend: (id, reason) => api.patch(`/users/${id}/suspend`, { reason }),
   activate: (id) => api.patch(`/users/${id}/activate`),
   update: (id, data) => api.patch(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
@@ -125,32 +122,44 @@ export const analyticsApi = {
   merchantStats: () => api.get("/analytics/merchants"),
 };
 
-// ---- Content API (existing) ----
+// ---- Content API ----
 export const contentApi = {
   list: () => api.get("/content"),
   get: (section) => api.get(`/content/${section}`),
   save: (section, payload) => api.post(`/content/${section}`, payload),
+  delete: (section) => api.delete(`/content/${section}`),
 };
 
-// ---- Forms API (existing) ----
+// ---- Forms API ----
 export const formsApi = {
   submit: (formData) =>
     api.post("/forms/submit", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
   list: (params = {}) => api.get("/forms", { params }),
+  get: (id) => api.get(`/forms/${id}`),
   update: (id, data) => api.patch(`/forms/${id}`, data),
   remove: (id) => api.delete(`/forms/${id}`),
 };
 
-// ---- Upload API (existing) ----
+// ---- Upload API ----
 export const uploadApi = {
+  single: (formData) =>
+    api.post("/upload/single", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
   multiple: (formData) =>
     api.post("/upload/multiple", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
   list: (nextCursor) =>
     api.get("/upload/list", { params: nextCursor ? { nextCursor } : {} }),
+};
+
+// ---- Health Check API ----
+export const healthApi = {
+  basic: () => api.get("/health"),
+  detailed: () => api.get("/health/detailed"),
 };
 
 export default api;

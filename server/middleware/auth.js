@@ -56,6 +56,45 @@ const requireAdmin = requireRoles(['admin']);
 // Staff or Admin middleware
 const requireStaffOrAdmin = requireRoles(['staff', 'admin']);
 
+// Auth middleware for serverless functions (used in api/ folder)
+const auth = async (req, res, next) => {
+  try {
+    const authHeader = req.header('Authorization') || req.headers['authorization'];
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token - user not found' });
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({ message: 'Account suspended' });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};
+
+// Admin auth for serverless functions
+const adminAuth = async (req, res, next) => {
+  return auth(req, res, () => {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    next();
+  });
+};
+
 // Get user role helper
 const getUserRole = (user) => {
   return user?.role || 'user';
@@ -66,5 +105,7 @@ module.exports = {
   requireRoles,
   requireAdmin,
   requireStaffOrAdmin,
+  auth,
+  adminAuth,
   getUserRole
 };

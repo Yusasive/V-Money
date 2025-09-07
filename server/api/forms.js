@@ -1,13 +1,15 @@
 const FormSubmission = require("../models/FormSubmission");
 const { adminAuth } = require("../middleware/auth");
 const { upload } = require("../config/cloudinary");
+const { sendStatusEmail } = require("../config/email");
 
-//  Allowed origins
+// Allowed origins
 const allowedOrigins = [
   "http://localhost:3000",
   "https://vmonieweb.com",
   "https://www.vmonieweb.com",
-];
+  process.env.FRONTEND_URL
+].filter(Boolean);
 
 // Set CORS headers
 const setCORS = (req, res) => {
@@ -29,7 +31,7 @@ const send = (req, res, status, data) => {
   res.status(status).json(data);
 };
 
-//  Helper to parse body for POST/PATCH requests
+// Helper to parse body for POST/PATCH requests
 const getBody = async (req) => {
   if (req.body) return req.body;
   return new Promise((resolve, reject) => {
@@ -48,7 +50,7 @@ const getBody = async (req) => {
   });
 };
 
-//  Main handler
+// Main handler
 module.exports = async (req, res) => {
   setCORS(req, res);
 
@@ -62,6 +64,7 @@ module.exports = async (req, res) => {
     try {
       const bodyData = await getBody(req);
       const { formType, ...formData } = bodyData;
+      
       const files = req.files
         ? req.files.map((file) => ({
             fieldName: file.fieldname,
@@ -70,17 +73,22 @@ module.exports = async (req, res) => {
             publicId: file.filename,
           }))
         : [];
+        
       const submission = new FormSubmission({
         formType,
         data: formData,
         files,
+        status: 'pending'
       });
+      
       await submission.save();
+      
       return send(req, res, 201, {
         message: "Form submitted successfully",
         id: submission._id,
       });
     } catch (error) {
+      console.error('Form submission error:', error);
       return send(req, res, 500, { message: "Server error" });
     }
   }
@@ -95,6 +103,7 @@ module.exports = async (req, res) => {
         if (status) query.status = status;
 
         const submissions = await FormSubmission.find(query)
+          .populate('reviewedBy', 'fullName email')
           .sort({ createdAt: -1 })
           .limit(limit * 1)
           .skip((page - 1) * limit);
@@ -104,10 +113,11 @@ module.exports = async (req, res) => {
         return send(req, res, 200, {
           submissions,
           totalPages: Math.ceil(total / limit),
-          currentPage: page,
+          currentPage: parseInt(page),
           total,
         });
       } catch (error) {
+        console.error('Get forms error:', error);
         return send(req, res, 500, { message: "Server error" });
       }
     });
@@ -118,12 +128,16 @@ module.exports = async (req, res) => {
     return adminAuth(req, res, async () => {
       const id = req.url.split("/").pop();
       try {
-        const submission = await FormSubmission.findById(id);
+        const submission = await FormSubmission.findById(id)
+          .populate('reviewedBy', 'fullName email');
+          
         if (!submission) {
           return send(req, res, 404, { message: "Submission not found" });
         }
+        
         return send(req, res, 200, submission);
       } catch (error) {
+        console.error('Get form error:', error);
         return send(req, res, 500, { message: "Server error" });
       }
     });
@@ -134,17 +148,55 @@ module.exports = async (req, res) => {
     return adminAuth(req, res, async () => {
       const id = req.url.split("/").pop();
       const { status, notes } = await getBody(req);
+      
       try {
         const submission = await FormSubmission.findByIdAndUpdate(
           id,
-          { status, notes },
+          { 
+            status, 
+            notes,
+            reviewedBy: req.user._id,
+            reviewedAt: new Date()
+          },
           { new: true }
-        );
+        ).populate('reviewedBy', 'fullName email');
+        
         if (!submission) {
           return send(req, res, 404, { message: "Submission not found" });
         }
-        return send(req, res, 200, submission);
+
+        // Send email notification
+        let emailResult = { sent: false, reason: 'no_email' };
+        const rawEmail = submission.data?.email?.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (rawEmail && emailRegex.test(rawEmail) && status) {
+          try {
+            await sendStatusEmail({
+              to: rawEmail,
+              status,
+              notes,
+              formType: submission.formType,
+              name: submission.data?.firstName || submission.data?.fullName
+            });
+            
+            submission.emailSent = true;
+            submission.emailSentAt = new Date();
+            await submission.save();
+            
+            emailResult = { sent: true, reason: 'ok' };
+          } catch (mailErr) {
+            console.error('Email send failed:', mailErr);
+            emailResult = { sent: false, reason: 'send_failed' };
+          }
+        }
+        
+        return send(req, res, 200, { 
+          submission,
+          email: emailResult 
+        });
       } catch (error) {
+        console.error('Update form error:', error);
         return send(req, res, 500, { message: "Server error" });
       }
     });
@@ -155,11 +207,16 @@ module.exports = async (req, res) => {
     return adminAuth(req, res, async () => {
       const id = req.url.split("/").pop();
       try {
-        await FormSubmission.findByIdAndDelete(id);
+        const submission = await FormSubmission.findByIdAndDelete(id);
+        if (!submission) {
+          return send(req, res, 404, { message: "Submission not found" });
+        }
+        
         return send(req, res, 200, {
           message: "Submission deleted successfully",
         });
       } catch (error) {
+        console.error('Delete form error:', error);
         return send(req, res, 500, { message: "Server error" });
       }
     });
