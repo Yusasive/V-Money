@@ -96,6 +96,7 @@ export const disputesApi = {
   update: (id, data) => api.patch(`/disputes/${id}`, data),
   respond: (id, response) => api.post(`/disputes/${id}/respond`, { response }),
   close: (id) => api.patch(`/disputes/${id}/close`),
+  escalate: (id) => api.patch(`/disputes/${id}`, { status: 'escalated' }),
   delete: (id) => api.delete(`/disputes/${id}`),
 };
 

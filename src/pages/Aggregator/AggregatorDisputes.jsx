@@ -40,7 +40,7 @@ const AggregatorDisputes = () => {
 
     try {
       setSubmittingResponse(true);
-      await disputesApi.respond(selectedDispute.id, responseText);
+      await disputesApi.respond(selectedDispute._id, responseText);
       toast.success("Response submitted successfully");
       setResponseText("");
       setSelectedDispute(null);
@@ -130,14 +130,14 @@ const AggregatorDisputes = () => {
 
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
-                            {/* Fix: User is not defined. Remove or import if needed. */}
-                            Raised by: {dispute.created_by_name || "Unknown"}
+                            <User className="h-4 w-4" />
+                            Raised by: {dispute.createdBy?.fullName || dispute.createdBy?.username || "Unknown"}
                           </div>
 
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
                             Created:{" "}
-                            {new Date(dispute.created_at).toLocaleDateString()}
+                            {new Date(dispute.createdAt).toLocaleDateString()}
                           </div>
 
                           {dispute.responses?.length > 0 && (
@@ -211,7 +211,7 @@ const AggregatorDisputes = () => {
                     Raised By
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {selectedDispute.created_by_name || "Unknown"}
+                    {selectedDispute.createdBy?.fullName || selectedDispute.createdBy?.username || "Unknown"}
                   </p>
                 </div>
 
@@ -220,7 +220,7 @@ const AggregatorDisputes = () => {
                     Created
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {new Date(selectedDispute.created_at).toLocaleString()}
+                    {new Date(selectedDispute.createdAt).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -238,10 +238,10 @@ const AggregatorDisputes = () => {
                         className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
                       >
                         <p className="text-gray-900 dark:text-white text-sm">
-                          {response.text}
+                          {response.response}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {new Date(response.created_at).toLocaleString()}
+                          {new Date(response.createdAt).toLocaleString()}
                         </p>
                       </div>
                     ))}

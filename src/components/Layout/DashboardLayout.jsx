@@ -85,15 +85,6 @@ const DashboardLayout = ({ children, userRole }) => {
           ...baseItems.slice(0, 1), // Dashboard only
           { name: "User Management", href: "/users", icon: Users },
           { name: "Tasks", href: "/tasks", icon: CheckSquare },
-          { name: "Disputes", href: "/disputes", icon: AlertTriangle },
-          { name: "Merchants", href: "/merchants", icon: Store },
-          { name: "Content", href: "/content", icon: Settings },
-          ...baseItems.slice(1), // Profile
-        ];
-
-      case "staff":
-        return [
-          ...baseItems.slice(0, 1), // Dashboard only
           { name: "Tasks", href: "/tasks", icon: CheckSquare },
           { name: "Disputes", href: "/disputes", icon: AlertTriangle },
           { name: "Merchants", href: "/merchants", icon: Store },

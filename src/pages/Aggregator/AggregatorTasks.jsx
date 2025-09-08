@@ -138,7 +138,7 @@ const AggregatorTasks = () => {
               <div className="space-y-4">
                 {filteredTasks.map((task, index) => (
                   <motion.div
-                    key={task.id}
+                    key={task._id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
@@ -162,19 +162,19 @@ const AggregatorTasks = () => {
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4" />
-                            Assigned by: {task.created_by_name || 'Unknown'}
+                            Assigned by: {task.createdBy?.fullName || task.createdBy?.username || 'Unknown'}
                           </div>
                           
-                          {task.due_date && (
+                          {task.dueDate && (
                             <div className="flex items-center gap-1">
                               <Calendar className="h-4 w-4" />
-                              Due: {new Date(task.due_date).toLocaleDateString()}
+                              Due: {new Date(task.dueDate).toLocaleDateString()}
                             </div>
                           )}
                           
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            Created: {new Date(task.created_at).toLocaleDateString()}
+                            Created: {new Date(task.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
@@ -192,8 +192,8 @@ const AggregatorTasks = () => {
                           <Button
                             variant="success"
                             size="sm"
-                            loading={markingDone === task.id}
-                            onClick={() => handleMarkDone(task.id)}
+                            loading={markingDone === task._id}
+                            onClick={() => handleMarkDone(task._id)}
                             icon={CheckCircle}
                           >
                             Mark Done
@@ -241,7 +241,7 @@ const AggregatorTasks = () => {
                     Assigned By
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {selectedTask.created_by_name || 'Unknown'}
+                    {selectedTask.createdBy?.fullName || selectedTask.createdBy?.username || 'Unknown'}
                   </p>
                 </div>
                 
@@ -250,28 +250,28 @@ const AggregatorTasks = () => {
                     Created
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {new Date(selectedTask.created_at).toLocaleString()}
+                    {new Date(selectedTask.createdAt).toLocaleString()}
                   </p>
                 </div>
                 
-                {selectedTask.due_date && (
+                {selectedTask.dueDate && (
                   <div>
                     <h5 className="font-medium text-gray-900 dark:text-white mb-1">
                       Due Date
                     </h5>
                     <p className="text-gray-600 dark:text-gray-400">
-                      {new Date(selectedTask.due_date).toLocaleString()}
+                      {new Date(selectedTask.dueDate).toLocaleString()}
                     </p>
                   </div>
                 )}
                 
-                {selectedTask.completed_at && (
+                {selectedTask.completedAt && (
                   <div>
                     <h5 className="font-medium text-gray-900 dark:text-white mb-1">
                       Completed
                     </h5>
                     <p className="text-gray-600 dark:text-gray-400">
-                      {new Date(selectedTask.completed_at).toLocaleString()}
+                      {new Date(selectedTask.completedAt).toLocaleString()}
                     </p>
                   </div>
                 )}
@@ -299,9 +299,9 @@ const AggregatorTasks = () => {
                 {selectedTask.status === 'pending' && (
                   <Button
                     variant="success"
-                    loading={markingDone === selectedTask.id}
+                    loading={markingDone === selectedTask._id}
                     onClick={() => {
-                      handleMarkDone(selectedTask.id);
+                      handleMarkDone(selectedTask._id);
                       setSelectedTask(null);
                     }}
                     icon={CheckCircle}
