@@ -1,33 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  FiUsers,
-  FiSearch,
-  FiMail,
-  FiPhone,
-  FiUser,
-  FiTrendingUp,
-} from "react-icons/fi";
+  Users,
+  Search,
+  Mail,
+  Phone,
+  User,
+  TrendingUp,
+} from "lucide-react";
+import PageHeader from "../../components/UI/PageHeader";
+import Button from "../../components/UI/Button";
 import formatTimeAgo from "../../utils/formatTimeAgo";
 import { merchantsApi, usersApi } from "../../api/client";
-
-const Header = () => (
-  <div className="mb-6">
-    <div className="flex items-center gap-3">
-      <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-        <FiUsers className="h-5 w-5" />
-      </div>
-      <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white font-lota">
-          Merchants
-        </h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
-          Create merchants and update daily transactions.
-        </p>
-      </div>
-    </div>
-  </div>
-);
 
 const Merchants = () => {
   const [merchantId, setMerchantId] = useState("");
@@ -125,18 +109,23 @@ const Merchants = () => {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      <Header />
+    <div className="space-y-6">
+      <PageHeader
+        title="Merchants"
+        subtitle="Create merchants and update daily transactions"
+        icon={Users}
+        actions={
+          <Button variant="outline" size="sm" onClick={load}>
+            Refresh
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Create Merchant */}
-        <div className="xl:col-span-1">
+        <div className="lg:col-span-1">
           <div className="relative overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow border border-gray-100 dark:border-gray-700">
-            <div className="absolute -top-10 -right-10 h-32 w-32 bg-emerald-400/20 rounded-full" />
+            <div className="absolute -top-6 -right-6 h-20 w-20 lg:h-32 lg:w-32 lg:-top-10 lg:-right-10 bg-emerald-400/20 rounded-full" />
             <div className="p-6 space-y-4 relative">
               <h3 className="font-semibold text-gray-900 dark:text-white">
                 Create Merchant
@@ -164,7 +153,7 @@ const Merchants = () => {
                   </select>
                 </div>
                 <div className="relative">
-                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Username"
@@ -188,7 +177,7 @@ const Merchants = () => {
                   required
                 />
                 <div className="relative">
-                  <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Email"
@@ -201,7 +190,7 @@ const Merchants = () => {
                   />
                 </div>
                 <div className="relative">
-                  <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Phone"
@@ -345,12 +334,12 @@ const Merchants = () => {
         </div>
 
         {/* Lookup + Details */}
-        <div className="xl:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           <div className="rounded-xl bg-white dark:bg-gray-800 shadow border border-gray-100 dark:border-gray-700">
             <div className="p-6">
               <div className="flex flex-col md:flex-row md:items-center gap-3">
                 <div className="relative flex-1">
-                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="Merchant ID"
@@ -394,44 +383,46 @@ const Merchants = () => {
 
                   <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                     <h4 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                      <FiTrendingUp /> Add Daily Transactions
+                      <TrendingUp className="h-4 w-4" /> Add Daily Transactions
                     </h4>
                     <form
                       onSubmit={addTransaction}
-                      className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end"
+                      className="space-y-3"
                     >
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          Txn Date
-                        </label>
-                        <input
-                          type="date"
-                          className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                          value={txnForm.txn_date}
-                          onChange={(e) =>
-                            setTxnForm({ ...txnForm, txn_date: e.target.value })
-                          }
-                          required
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm text-gray-600 dark:text-gray-300">
+                            Txn Date
+                          </label>
+                          <input
+                            type="date"
+                            className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                            value={txnForm.txn_date}
+                            onChange={(e) =>
+                              setTxnForm({ ...txnForm, txn_date: e.target.value })
+                            }
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600 dark:text-gray-300">
+                            Txn Count
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                            value={txnForm.txn_count}
+                            onChange={(e) =>
+                              setTxnForm({
+                                ...txnForm,
+                                txn_count: e.target.value,
+                              })
+                            }
+                            required
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-sm text-gray-600 dark:text-gray-300">
-                          Txn Count
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                          value={txnForm.txn_count}
-                          onChange={(e) =>
-                            setTxnForm({
-                              ...txnForm,
-                              txn_count: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-                      <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                      <button className="w-full md:w-auto bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                         Add
                       </button>
                     </form>
@@ -442,7 +433,7 @@ const Merchants = () => {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

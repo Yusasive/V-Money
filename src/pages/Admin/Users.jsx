@@ -167,24 +167,24 @@ const Users = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <th className="px-3 lg:px-4 py-3 text-left text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <th className="px-3 lg:px-4 py-3 text-left text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300">
                     Email
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <th className="px-3 lg:px-4 py-3 text-left text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300">
                     Role
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <th className="px-3 lg:px-4 py-3 text-left text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <th className="px-3 lg:px-4 py-3 text-right text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300">
                     Actions
                   </th>
                 </tr>
@@ -195,27 +195,28 @@ const Users = () => {
                     key={u._id}
                     className="border-t border-gray-100 dark:border-gray-700"
                   >
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                    <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm text-gray-900 dark:text-gray-100">
                       {u.fullName}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm text-gray-600 dark:text-gray-300 truncate max-w-0">
                       {u.email}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm text-gray-600 dark:text-gray-300">
                       {u.role}
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm">
                       <span
                         className={`px-2 py-1 rounded-md text-xs font-medium ${statusBadgeClass(u.status)}`}
                       >
                         {u.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-right space-x-2">
+                    <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm text-right">
+                      <div className="flex flex-col lg:flex-row gap-1 lg:gap-2 lg:justify-end">
                       {u.status !== "approved" && (
                         <button
                           onClick={() => doAction(u._id, "approve")}
-                          className="px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700"
+                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 text-xs"
                           disabled={loading}
                         >
                           Approve
@@ -224,7 +225,7 @@ const Users = () => {
                       {u.role !== "admin" && u.status !== "rejected" && (
                         <button
                           onClick={() => doAction(u._id, "reject")}
-                          className="px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
+                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 text-xs"
                           disabled={loading}
                         >
                           Reject
@@ -233,7 +234,7 @@ const Users = () => {
                       {u.role !== "admin" && u.status !== "suspended" && (
                         <button
                           onClick={() => doAction(u._id, "suspend")}
-                          className="px-3 py-1.5 rounded-md bg-gray-600 text-white hover:bg-gray-700"
+                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-gray-600 text-white hover:bg-gray-700 text-xs"
                           disabled={loading}
                         >
                           Suspend
@@ -242,7 +243,7 @@ const Users = () => {
                       {u.status !== "approved" && (
                         <button
                           onClick={() => doAction(u._id, "activate")}
-                          className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-xs"
                           disabled={loading}
                         >
                           Activate
@@ -251,12 +252,13 @@ const Users = () => {
                       {u.role !== "admin" && (
                         <button
                           onClick={() => doAction(u._id, "delete")}
-                          className="px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
+                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 text-xs"
                           disabled={loading}
                         >
                           Delete
                         </button>
                       )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -265,15 +267,15 @@ const Users = () => {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between p-3 border-t border-gray-100 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300">
+          <div className="flex flex-col sm:flex-row items-center justify-between p-3 lg:p-4 border-t border-gray-100 dark:border-gray-700 text-xs lg:text-sm text-gray-600 dark:text-gray-300 gap-2">
             <div>
               Page {pagination.page} of {pagination.pages}
             </div>
-            <div className="space-x-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => fetchUsers(Math.max(1, pagination.page - 1))}
                 disabled={loading || pagination.page <= 1}
-                className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50 text-xs lg:text-sm"
               >
                 Prev
               </button>
@@ -282,7 +284,7 @@ const Users = () => {
                   fetchUsers(Math.min(pagination.pages, pagination.page + 1))
                 }
                 disabled={loading || pagination.page >= pagination.pages}
-                className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 disabled:opacity-50 text-xs lg:text-sm"
               >
                 Next
               </button>

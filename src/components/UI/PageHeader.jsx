@@ -38,16 +38,16 @@ const PageHeader = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
           {Icon && (
-            <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <Icon className="h-6 w-6" />
+            <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+              <Icon className="h-5 w-5 lg:h-6 lg:w-6" />
             </div>
           )}
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-lota">
+            <h1 className="text-xl lg:text-3xl font-bold text-gray-900 dark:text-white font-lota">
               {title}
             </h1>
             {subtitle && (
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400 mt-1">
                 {subtitle}
               </p>
             )}

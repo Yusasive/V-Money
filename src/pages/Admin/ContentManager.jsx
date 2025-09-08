@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { Settings } from "lucide-react";
+import PageHeader from "../../components/UI/PageHeader";
+import Button from "../../components/UI/Button";
 import { contentApi, uploadApi } from "../../api/client";
 
 const SECTIONS = [
@@ -587,18 +590,25 @@ const ContentManager = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <h2 className="text-3xl font-bold text-gray-900 font-lota">
-        Content Manager
-      </h2>
+      <PageHeader
+        title="Content Manager"
+        subtitle="Manage website content and sections"
+        icon={Settings}
+        actions={
+          <Button variant="outline" size="sm" onClick={fetchAllContent}>
+            Refresh
+          </Button>
+        }
+      />
 
       {errorAll && (
-        <div className="p-3 rounded bg-red-100 text-red-700">{errorAll}</div>
+        <div className="p-3 rounded bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">{errorAll}</div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="grid grid-cols-12">
           {/* Vertical tabs */}
-          <aside className="col-span-12 md:col-span-3 border-r bg-gray-50">
+          <aside className="col-span-12 md:col-span-3 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
             <ul className="p-2">
               {SECTIONS.map((s) => {
                 const isActive = s.id === selectedId;
@@ -606,7 +616,7 @@ const ContentManager = () => {
                 return (
                   <li key={s.id}>
                     <button
-                      className={`w-full text-left px-3 py-2 rounded-md mb-1 flex items-center justify-between ${isActive ? "bg-primary text-white" : "hover:bg-gray-100"}`}
+                      className={`w-full text-left px-3 py-2 rounded-md mb-1 flex items-center justify-between text-sm ${isActive ? "bg-primary text-white" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                       onClick={() => {
                         setSelectedId(s.id);
                         setIsEditing(false);
@@ -615,7 +625,7 @@ const ContentManager = () => {
                     >
                       <span>{s.name}</span>
                       <span
-                        className={`ml-2 text-[10px] px-2 py-0.5 rounded ${configured ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}
+                        className={`ml-2 text-[10px] px-2 py-0.5 rounded ${configured ? "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400"}`}
                       >
                         {configured ? "Configured" : "Not set"}
                       </span>
@@ -629,19 +639,19 @@ const ContentManager = () => {
           {/* Right content */}
           <section className="col-span-12 md:col-span-9 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">{currentSection.name}</h3>
-              <div className="flex gap-2">
+              <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-white">{currentSection.name}</h3>
+              <div className="flex flex-wrap gap-2">
                 {!isEditing ? (
                   <div className="flex gap-2">
                     <button
-                      className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+                      className="bg-green-500 text-white px-3 lg:px-4 py-2 rounded-md hover:bg-green-600 text-sm"
                       onClick={() => setIsEditing(true)}
                     >
                       {allContent[selectedId]?._id ? "Edit" : "Create"}
                     </button>
                     {allContent[selectedId]?._id && (
                       <button
-                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                        className="bg-red-600 text-white px-3 lg:px-4 py-2 rounded-md hover:bg-red-700 text-sm"
                         onClick={handleDelete}
                       >
                         Delete
@@ -651,13 +661,13 @@ const ContentManager = () => {
                 ) : (
                   <>
                     <button
-                      className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300"
+                      className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 lg:px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 text-sm"
                       onClick={() => setIsEditing(false)}
                     >
                       Cancel
                     </button>
                     <button
-                      className="bg-primary text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                      className="bg-primary text-white px-3 lg:px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
                       disabled={saving}
                       onClick={handleSave}
                     >
@@ -670,7 +680,7 @@ const ContentManager = () => {
 
             {message && (
               <div
-                className={`mb-4 p-3 rounded ${message.includes("Failed") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}
+                className={`mb-4 p-3 rounded border ${message.includes("Failed") ? "bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800" : "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"}`}
               >
                 {message}
               </div>
@@ -693,7 +703,7 @@ const ContentManager = () => {
                 )}
               </div>
             ) : (
-              <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+              <div className="space-y-4">
                 {currentSection.fields.map((f) => (
                   <FieldEditorComp
                     key={f}
@@ -707,14 +717,14 @@ const ContentManager = () => {
                     openImagePicker={() => setImagePickerOpen(true)}
                   />
                 ))}
-              </form>
+              </div>
             )}
           </section>
         </div>
       </div>
 
       {loadingAll && (
-        <div className="text-center text-gray-600">Loading...</div>
+        <div className="text-center text-gray-600 dark:text-gray-400">Loading...</div>
       )}
 
       {/* Image Picker */}

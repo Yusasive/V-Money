@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FileText } from "lucide-react";
+import PageHeader from "../../components/UI/PageHeader";
+import Button from "../../components/UI/Button";
 import { formsApi } from "../../api/client";
 
 const FormSubmissions = () => {
@@ -132,12 +135,21 @@ const FormSubmissions = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <h2 className="text-3xl font-bold text-gray-900">Form Submissions</h2>
+      <PageHeader
+        title="Form Submissions"
+        subtitle="Review and manage form submissions"
+        icon={FileText}
+        actions={
+          <Button variant="outline" size="sm" onClick={fetchSubmissions}>
+            Refresh
+          </Button>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow flex flex-wrap gap-4 items-center">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex flex-wrap gap-4 items-center">
         <div className="space-y-1">
-          <label className="text-xs text-gray-500">Status</label>
+          <label className="text-xs text-gray-500 dark:text-gray-400">Status</label>
           <select
             value={filters.status}
             onChange={(e) =>
@@ -147,7 +159,7 @@ const FormSubmissions = () => {
                 page: 1,
               }))
             }
-            className="px-3 py-2 border border-gray-300 rounded-md"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md"
           >
             <option value="">All</option>
             <option value="pending">Pending</option>
@@ -159,100 +171,104 @@ const FormSubmissions = () => {
 
         <button
           onClick={() => setFilters({ formType: "", status: "", page: 1 })}
-          className="ml-auto text-sm px-3 py-2 rounded-md border hover:bg-gray-100"
+          className="ml-auto text-sm px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
         >
           Reset Filters
         </button>
 
-        <div className="ml-auto text-sm text-gray-600">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
           Total: {pagination.total || 0} submissions
         </div>
       </div>
 
       {/* Submissions List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
         {submissions.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
             No submissions found.
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Form Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Submitted
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {submissions.map((submission, i) => (
-                <tr
-                  key={submission._id}
-                  className={`hover:bg-gray-50 transition ${
-                    i % 2 === 0 ? "bg-gray-50/30" : "bg-white"
-                  }`}
-                >
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900 capitalize">
-                      {submission.formType}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {submission.data?.firstName ||
-                        submission.data?.email ||
-                        "N/A"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                        submission.status
-                      )}`}
-                    >
-                      {submission.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(submission.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium space-x-3">
-                    <button
-                      onClick={() => setSelectedSubmission(submission)}
-                      className="text-primary hover:text-blue-700"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => deleteSubmission(submission._id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Form Type
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Submitted
+                  </th>
+                  <th className="px-3 lg:px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
+                {submissions.map((submission, i) => (
+                  <tr
+                    key={submission._id}
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
+                      i % 2 === 0 ? "bg-gray-50/30 dark:bg-gray-900/30" : "bg-white dark:bg-gray-800"
+                    }`}
+                  >
+                    <td className="px-3 lg:px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                        {submission.formType}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-0">
+                        {submission.data?.firstName ||
+                          submission.data?.email ||
+                          "N/A"}
+                      </div>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                          submission.status
+                        )}`}
+                      >
+                        {submission.status}
+                      </span>
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(submission.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 lg:px-6 py-4 text-sm font-medium">
+                      <div className="flex flex-col lg:flex-row gap-1 lg:gap-3">
+                        <button
+                          onClick={() => setSelectedSubmission(submission)}
+                          className="text-primary hover:text-blue-700 text-xs lg:text-sm"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => deleteSubmission(submission._id)}
+                          className="text-red-600 hover:text-red-900 text-xs lg:text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-4">
+        <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
           <button
             disabled={filters.page === 1}
             onClick={() =>
               setFilters((prev) => ({ ...prev, page: prev.page - 1 }))
             }
-            className="px-3 py-2 rounded-md border hover:bg-gray-100 disabled:opacity-50"
+            className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-sm"
           >
             Prev
           </button>
@@ -265,7 +281,7 @@ const FormSubmissions = () => {
                 className={`px-3 py-2 rounded-md ${
                   page === pagination.currentPage
                     ? "bg-primary text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-100 border"
+                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
                 }`}
               >
                 {page}
@@ -278,7 +294,7 @@ const FormSubmissions = () => {
             onClick={() =>
               setFilters((prev) => ({ ...prev, page: prev.page + 1 }))
             }
-            className="px-3 py-2 rounded-md border hover:bg-gray-100 disabled:opacity-50"
+            className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 text-sm"
           >
             Next
           </button>

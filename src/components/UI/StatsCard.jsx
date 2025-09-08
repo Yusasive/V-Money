@@ -34,20 +34,20 @@ const StatsCard = ({
       className="relative overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow duration-300"
     >
       {/* Background gradient */}
-      <div className={`absolute -top-10 -right-10 h-32 w-32 bg-gradient-to-br ${colorClasses[color]} opacity-10 rounded-full`} />
+      <div className={`absolute -top-6 -right-6 h-20 w-20 lg:h-32 lg:w-32 lg:-top-10 lg:-right-10 bg-gradient-to-br ${colorClasses[color]} opacity-10 rounded-full`} />
       
-      <div className="p-6 relative">
+      <div className="p-4 lg:p-6 relative">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+            <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 font-medium">
               {title}
             </p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+            <p className="text-xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1 lg:mt-2">
               {value}
             </p>
             
             {trend && trendValue && (
-              <div className="flex items-center mt-2">
+              <div className="flex items-center mt-1 lg:mt-2">
                 <span className={`text-sm font-medium ${
                   trend === 'up' ? 'text-green-600' : 
                   trend === 'down' ? 'text-red-600' : 'text-gray-600'
@@ -60,8 +60,8 @@ const StatsCard = ({
           </div>
           
           {Icon && (
-            <div className={`h-12 w-12 rounded-lg ${iconColorClasses[color]} flex items-center justify-center`}>
-              <Icon className="h-6 w-6" />
+            <div className={`h-10 w-10 lg:h-12 lg:w-12 rounded-lg ${iconColorClasses[color]} flex items-center justify-center flex-shrink-0`}>
+              <Icon className="h-5 w-5 lg:h-6 lg:w-6" />
             </div>
           )}
         </div>
