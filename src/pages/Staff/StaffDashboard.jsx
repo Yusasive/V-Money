@@ -1,21 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { CheckSquare, AlertTriangle, Store, TrendingUp, Plus } from 'lucide-react';
-import DashboardLayout from '../../components/Layout/DashboardLayout';
-import PageHeader from '../../components/UI/PageHeader';
-import StatsCard from '../../components/UI/StatsCard';
-import Button from '../../components/UI/Button';
-import Modal from '../../components/UI/Modal';
-import { analyticsApi, tasksApi, disputesApi, merchantsApi, usersApi } from '../../api/client';
-import LoadingSpinner from '../../components/UI/LoadingSpinner';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  CheckSquare,
+  AlertTriangle,
+  Store,
+  TrendingUp,
+  Plus,
+} from "lucide-react";
+import DashboardLayout from "../../components/Layout/DashboardLayout";
+import PageHeader from "../../components/UI/PageHeader";
+import StatsCard from "../../components/UI/StatsCard";
+import Button from "../../components/UI/Button";
+import Modal from "../../components/UI/Modal";
+import {
+  analyticsApi,
+  tasksApi,
+  disputesApi,
+  merchantsApi,
+  usersApi,
+} from "../../api/client";
+import LoadingSpinner from "../../components/UI/LoadingSpinner";
+import toast from "react-hot-toast";
 
 const StaffDashboard = () => {
   const [stats, setStats] = useState({
     tasksCreated: 0,
     tasksCompleted: 0,
     disputesRaised: 0,
-    merchantsManaged: 0
+    merchantsManaged: 0,
   });
   const [recentTasks, setRecentTasks] = useState([]);
   const [recentDisputes, setRecentDisputes] = useState([]);
@@ -26,19 +38,19 @@ const StaffDashboard = () => {
 
   // Task form
   const [taskForm, setTaskForm] = useState({
-    title: '',
-    description: '',
-    assigned_to: '',
-    due_date: '',
-    priority: 'medium'
+    title: "",
+    description: "",
+    assigned_to: "",
+    due_date: "",
+    priority: "medium",
   });
 
   // Dispute form
   const [disputeForm, setDisputeForm] = useState({
-    title: '',
-    description: '',
-    raised_against: '',
-    priority: 'medium'
+    title: "",
+    description: "",
+    raised_against: "",
+    priority: "medium",
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -51,32 +63,31 @@ const StaffDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch overview stats
       const overviewResponse = await analyticsApi.overview();
       const overviewStats = overviewResponse.data;
-      
+
       // Fetch tasks created by current user
       const tasksResponse = await tasksApi.list({ limit: 10 });
       const tasks = tasksResponse.data.tasks || [];
-      
+
       // Fetch disputes
       const disputesResponse = await disputesApi.list({ limit: 5 });
       const disputes = disputesResponse.data.disputes || [];
-      
+
       setStats({
         tasksCreated: tasks.length,
-        tasksCompleted: tasks.filter(t => t.status === 'completed').length,
+        tasksCompleted: tasks.filter((t) => t.status === "completed").length,
         disputesRaised: disputes.length,
-        merchantsManaged: overviewStats.merchants?.total || 0
+        merchantsManaged: overviewStats.merchants?.total || 0,
       });
-      
+
       setRecentTasks(tasks.slice(0, 5));
       setRecentDisputes(disputes.slice(0, 3));
-      
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      console.error("Failed to fetch dashboard data:", error);
+      toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -84,18 +95,18 @@ const StaffDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await usersApi.list({ 
-        status: 'approved', 
-        limit: 100 
+      const response = await usersApi.list({
+        status: "approved",
+        limit: 100,
       });
       const allUsers = response.data.users || [];
       // Filter for aggregators and staff for task assignment
-      const eligibleUsers = allUsers.filter(u => 
-        ['aggregator', 'staff'].includes(u.role)
+      const eligibleUsers = allUsers.filter((u) =>
+        ["aggregator", "staff"].includes(u.role)
       );
       setUsers(eligibleUsers);
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error("Failed to fetch users:", error);
     }
   };
 
@@ -104,19 +115,19 @@ const StaffDashboard = () => {
     try {
       setSubmitting(true);
       await tasksApi.create(taskForm);
-      toast.success('Task created successfully');
+      toast.success("Task created successfully");
       setShowTaskModal(false);
       setTaskForm({
-        title: '',
-        description: '',
-        assigned_to: '',
-        due_date: '',
-        priority: 'medium'
+        title: "",
+        description: "",
+        assigned_to: "",
+        due_date: "",
+        priority: "medium",
       });
       await fetchDashboardData();
     } catch (error) {
-      console.error('Failed to create task:', error);
-      toast.error('Failed to create task');
+      console.error("Failed to create task:", error);
+      toast.error("Failed to create task");
     } finally {
       setSubmitting(false);
     }
@@ -127,18 +138,18 @@ const StaffDashboard = () => {
     try {
       setSubmitting(true);
       await disputesApi.create(disputeForm);
-      toast.success('Dispute created successfully');
+      toast.success("Dispute created successfully");
       setShowDisputeModal(false);
       setDisputeForm({
-        title: '',
-        description: '',
-        raised_against: '',
-        priority: 'medium'
+        title: "",
+        description: "",
+        raised_against: "",
+        priority: "medium",
       });
       await fetchDashboardData();
     } catch (error) {
-      console.error('Failed to create dispute:', error);
-      toast.error('Failed to create dispute');
+      console.error("Failed to create dispute:", error);
+      toast.error("Failed to create dispute");
     } finally {
       setSubmitting(false);
     }
@@ -154,7 +165,7 @@ const StaffDashboard = () => {
 
   return (
     <DashboardLayout userRole="staff">
-      <div className="space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <PageHeader
           title="Staff Dashboard"
           subtitle="Manage tasks, disputes, and merchants"
@@ -254,15 +265,23 @@ const StaffDashboard = () => {
                           {task.title}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Assigned to: {task.assignedTo?.fullName || task.assignedTo?.username || 'Unknown'}
+                          Assigned to:{" "}
+                          {task.assignedTo?.fullName ||
+                            task.assignedTo?.username ||
+                            "Unknown"}
                         </p>
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        task.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                        task.status === 'done' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                        task.status === 'rejected' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
-                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          task.status === "completed"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            : task.status === "done"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                              : task.status === "rejected"
+                                ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                                : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                        }`}
+                      >
                         {task.status}
                       </span>
                     </div>
@@ -311,14 +330,21 @@ const StaffDashboard = () => {
                           {dispute.title}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          Against: {dispute.raisedAgainst?.fullName || dispute.raisedAgainst?.username || 'Unknown'}
+                          Against:{" "}
+                          {dispute.raisedAgainst?.fullName ||
+                            dispute.raisedAgainst?.username ||
+                            "Unknown"}
                         </p>
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        dispute.status === 'resolved' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                        dispute.status === 'in_review' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                        'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          dispute.status === "resolved"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                            : dispute.status === "in_review"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                              : "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
+                        }`}
+                      >
                         {dispute.status}
                       </span>
                     </div>
@@ -344,7 +370,9 @@ const StaffDashboard = () => {
               <input
                 type="text"
                 value={taskForm.title}
-                onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                onChange={(e) =>
+                  setTaskForm({ ...taskForm, title: e.target.value })
+                }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Enter task title"
                 required
@@ -357,7 +385,9 @@ const StaffDashboard = () => {
               </label>
               <textarea
                 value={taskForm.description}
-                onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                onChange={(e) =>
+                  setTaskForm({ ...taskForm, description: e.target.value })
+                }
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Enter task description"
@@ -371,7 +401,9 @@ const StaffDashboard = () => {
                 </label>
                 <select
                   value={taskForm.assigned_to}
-                  onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, assigned_to: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   required
                 >
@@ -390,7 +422,9 @@ const StaffDashboard = () => {
                 </label>
                 <select
                   value={taskForm.priority}
-                  onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, priority: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="low">Low</option>
@@ -407,7 +441,9 @@ const StaffDashboard = () => {
               <input
                 type="date"
                 value={taskForm.due_date}
-                onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                onChange={(e) =>
+                  setTaskForm({ ...taskForm, due_date: e.target.value })
+                }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
@@ -420,11 +456,7 @@ const StaffDashboard = () => {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                loading={submitting}
-                icon={Plus}
-              >
+              <Button type="submit" loading={submitting} icon={Plus}>
                 Create Task
               </Button>
             </div>
@@ -446,7 +478,9 @@ const StaffDashboard = () => {
               <input
                 type="text"
                 value={disputeForm.title}
-                onChange={(e) => setDisputeForm({ ...disputeForm, title: e.target.value })}
+                onChange={(e) =>
+                  setDisputeForm({ ...disputeForm, title: e.target.value })
+                }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Enter dispute title"
                 required
@@ -459,7 +493,12 @@ const StaffDashboard = () => {
               </label>
               <textarea
                 value={disputeForm.description}
-                onChange={(e) => setDisputeForm({ ...disputeForm, description: e.target.value })}
+                onChange={(e) =>
+                  setDisputeForm({
+                    ...disputeForm,
+                    description: e.target.value,
+                  })
+                }
                 rows={4}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Describe the dispute in detail"
@@ -474,16 +513,23 @@ const StaffDashboard = () => {
                 </label>
                 <select
                   value={disputeForm.raised_against}
-                  onChange={(e) => setDisputeForm({ ...disputeForm, raised_against: e.target.value })}
+                  onChange={(e) =>
+                    setDisputeForm({
+                      ...disputeForm,
+                      raised_against: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   required
                 >
                   <option value="">Select user</option>
-                  {users.filter(u => u.role === 'aggregator').map((user) => (
-                    <option key={user._id} value={user._id}>
-                      {user.fullName} ({user.username})
-                    </option>
-                  ))}
+                  {users
+                    .filter((u) => u.role === "aggregator")
+                    .map((user) => (
+                      <option key={user._id} value={user._id}>
+                        {user.fullName} ({user.username})
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -493,7 +539,9 @@ const StaffDashboard = () => {
                 </label>
                 <select
                   value={disputeForm.priority}
-                  onChange={(e) => setDisputeForm({ ...disputeForm, priority: e.target.value })}
+                  onChange={(e) =>
+                    setDisputeForm({ ...disputeForm, priority: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="low">Low</option>
