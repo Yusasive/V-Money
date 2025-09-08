@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import { CheckSquare, AlertTriangle, TrendingUp, Clock, User, Calendar } from 'lucide-react';
 import DashboardLayout from '../../components/Layout/DashboardLayout';
 import PageHeader from '../../components/UI/PageHeader';
 import StatsCard from '../../components/UI/StatsCard';
-import { analyticsApi, tasksApi, disputesApi } from '../../api/client';
+import Button from '../../components/UI/Button';
+import Badge from '../../components/UI/Badge';
+import { tasksApi, disputesApi } from '../../api/client';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const AggregatorDashboard = () => {
   const [stats, setStats] = useState({
@@ -17,6 +20,7 @@ const AggregatorDashboard = () => {
   const [recentTasks, setRecentTasks] = useState([]);
   const [recentDisputes, setRecentDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [markingDone, setMarkingDone] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -37,7 +41,7 @@ const AggregatorDashboard = () => {
       // Calculate stats
       const tasksCompleted = tasks.filter(t => t.status === 'completed').length;
       const tasksInProgress = tasks.filter(t => t.status === 'in_progress').length;
-      const disputesActive = disputes.filter(d => d.status === 'open').length;
+      const disputesActive = disputes.filter(d => ['open', 'in_review'].includes(d.status)).length;
       
       setStats({
         tasksAssigned: tasks.length,
@@ -51,8 +55,23 @@ const AggregatorDashboard = () => {
       
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMarkDone = async (taskId) => {
+    try {
+      setMarkingDone(taskId);
+      await tasksApi.markDone(taskId);
+      toast.success('Task marked as done! Waiting for approval.');
+      await fetchDashboardData();
+    } catch (error) {
+      console.error('Failed to mark task as done:', error);
+      toast.error('Failed to mark task as done');
+    } finally {
+      setMarkingDone(null);
     }
   };
 
@@ -68,9 +87,18 @@ const AggregatorDashboard = () => {
     <DashboardLayout userRole="aggregator">
       <div className="space-y-8">
         <PageHeader
-          title="Dashboard"
+          title="Aggregator Dashboard"
           subtitle="Welcome to your aggregator dashboard"
           icon={TrendingUp}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchDashboardData}
+            >
+              Refresh
+            </Button>
+          }
         />
 
         {/* Stats Grid */}
@@ -128,7 +156,7 @@ const AggregatorDashboard = () => {
                 <div className="space-y-4">
                   {recentTasks.map((task) => (
                     <div
-                      key={task.id}
+                      key={task._id}
                       className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                     >
                       <div>
@@ -136,16 +164,36 @@ const AggregatorDashboard = () => {
                           {task.title}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Assigned by: {task.created_by_name || 'Unknown'}
+                          Assigned by: {task.createdBy?.fullName || task.createdBy?.username || 'Unknown'}
                         </p>
+                        {task.dueDate && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-1">
+                            <Calendar className="h-3 w-3" />
+                            Due: {new Date(task.dueDate).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {task.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={
+                          task.status === 'completed' ? 'success' :
+                          task.status === 'done' ? 'warning' :
+                          task.status === 'rejected' ? 'danger' :
+                          task.status === 'in_progress' ? 'primary' :
+                          'pending'
+                        }>
+                          {task.status === 'done' ? 'Awaiting Approval' : task.status}
+                        </Badge>
+                        {task.status === 'pending' && (
+                          <Button
+                            variant="success"
+                            size="sm"
+                            loading={markingDone === task._id}
+                            onClick={() => handleMarkDone(task._id)}
+                          >
+                            Mark Done
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -174,24 +222,28 @@ const AggregatorDashboard = () => {
                 <div className="space-y-4">
                   {recentDisputes.map((dispute) => (
                     <div
-                      key={dispute.id}
+                      key={dispute._id}
                       className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
                     >
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900 dark:text-white">
-                          {dispute.title || 'Dispute'}
+                          {dispute.title}
                         </h4>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           {dispute.description}
                         </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-2">
+                          <User className="h-3 w-3" />
+                          Raised by: {dispute.createdBy?.fullName || dispute.createdBy?.username || 'Unknown'}
+                        </p>
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        dispute.status === 'open' ? 'bg-red-100 text-red-800' :
-                        dispute.status === 'resolved' ? 'bg-green-100 text-green-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {dispute.status}
-                      </span>
+                      <Badge variant={
+                        dispute.status === 'resolved' ? 'success' :
+                        dispute.status === 'in_review' ? 'warning' :
+                        'danger'
+                      }>
+                        {dispute.status === 'in_review' ? 'In Review' : dispute.status}
+                      </Badge>
                     </div>
                   ))}
                 </div>

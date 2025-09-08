@@ -1,0 +1,539 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { CheckSquare, Plus, User, Calendar, Clock, CheckCircle, X } from 'lucide-react';
+import DashboardLayout from '../../components/Layout/DashboardLayout';
+import PageHeader from '../../components/UI/PageHeader';
+import Button from '../../components/UI/Button';
+import Badge from '../../components/UI/Badge';
+import Modal from '../../components/UI/Modal';
+import { tasksApi, usersApi } from '../../api/client';
+import LoadingSpinner from '../../components/UI/LoadingSpinner';
+import toast from 'react-hot-toast';
+
+const StaffTasks = () => {
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [filter, setFilter] = useState('all');
+  const [submitting, setSubmitting] = useState(false);
+
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    assigned_to: '',
+    due_date: '',
+    priority: 'medium'
+  });
+
+  useEffect(() => {
+    fetchTasks();
+    fetchUsers();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const response = await tasksApi.list();
+      setTasks(response.data.tasks || []);
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      toast.error('Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await usersApi.list({ 
+        status: 'approved', 
+        limit: 100 
+      });
+      const allUsers = response.data.users || [];
+      const eligibleUsers = allUsers.filter(u => 
+        ['aggregator', 'staff'].includes(u.role)
+      );
+      setUsers(eligibleUsers);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      await tasksApi.create(taskForm);
+      toast.success('Task created successfully');
+      setShowCreateModal(false);
+      setTaskForm({
+        title: '',
+        description: '',
+        assigned_to: '',
+        due_date: '',
+        priority: 'medium'
+      });
+      await fetchTasks();
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      toast.error('Failed to create task');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApproveTask = async (taskId) => {
+    try {
+      await tasksApi.approve(taskId);
+      toast.success('Task approved successfully');
+      await fetchTasks();
+    } catch (error) {
+      console.error('Failed to approve task:', error);
+      toast.error('Failed to approve task');
+    }
+  };
+
+  const handleRejectTask = async (taskId) => {
+    const reason = window.prompt('Enter rejection reason (optional):');
+    try {
+      await tasksApi.reject(taskId, reason || '');
+      toast.success('Task rejected');
+      await fetchTasks();
+    } catch (error) {
+      console.error('Failed to reject task:', error);
+      toast.error('Failed to reject task');
+    }
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'all') return true;
+    return task.status === filter;
+  });
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      pending: { variant: 'pending', label: 'Pending' },
+      in_progress: { variant: 'primary', label: 'In Progress' },
+      done: { variant: 'warning', label: 'Done (Awaiting Approval)' },
+      completed: { variant: 'success', label: 'Completed' },
+      rejected: { variant: 'danger', label: 'Rejected' },
+    };
+    
+    const config = statusMap[status] || { variant: 'default', label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout userRole="staff">
+        <LoadingSpinner size="lg" text="Loading tasks..." />
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout userRole="staff">
+      <div className="space-y-8">
+        <PageHeader
+          title="Task Management"
+          subtitle="Create, assign, and track tasks for your team"
+          icon={CheckSquare}
+          actions={
+            <Button
+              variant="primary"
+              onClick={() => setShowCreateModal(true)}
+              icon={Plus}
+            >
+              Create Task
+            </Button>
+          }
+        />
+
+        {/* Filters */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'all', label: 'All Tasks' },
+              { key: 'pending', label: 'Pending' },
+              { key: 'in_progress', label: 'In Progress' },
+              { key: 'done', label: 'Awaiting Approval' },
+              { key: 'completed', label: 'Completed' },
+              { key: 'rejected', label: 'Rejected' },
+            ].map((filterOption) => (
+              <button
+                key={filterOption.key}
+                onClick={() => setFilter(filterOption.key)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === filterOption.key
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {filterOption.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tasks List */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Tasks ({filteredTasks.length})
+            </h3>
+          </div>
+          
+          <div className="p-6">
+            {filteredTasks.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  No tasks found
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {filter === 'all' 
+                    ? 'Create your first task to get started.'
+                    : `No tasks with status "${filter}".`
+                  }
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredTasks.map((task, index) => (
+                  <motion.div
+                    key={task._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {task.title}
+                          </h4>
+                          {getStatusBadge(task.status)}
+                        </div>
+
+                        {task.description && (
+                          <p className="text-gray-600 dark:text-gray-400 mb-4">
+                            {task.description}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            Assigned to: {task.assignedTo?.fullName || task.assignedTo?.username || 'Unknown'}
+                          </div>
+
+                          {task.dueDate && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Due: {new Date(task.dueDate).toLocaleDateString()}
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            Created: {new Date(task.createdAt).toLocaleDateString()}
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            Priority: <span className={`px-2 py-1 text-xs rounded-full ${
+                              task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {task.priority}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedTask(task)}
+                        >
+                          View Details
+                        </Button>
+
+                        {task.status === 'done' && (
+                          <>
+                            <Button
+                              variant="success"
+                              size="sm"
+                              onClick={() => handleApproveTask(task._id)}
+                              icon={CheckCircle}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleRejectTask(task._id)}
+                              icon={X}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Create Task Modal */}
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Create New Task"
+          size="lg"
+        >
+          <form onSubmit={handleCreateTask} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Task Title *
+              </label>
+              <input
+                type="text"
+                value={taskForm.title}
+                onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Enter task title"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Description
+              </label>
+              <textarea
+                value={taskForm.description}
+                onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="Enter task description"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Assign To *
+                </label>
+                <select
+                  value={taskForm.assigned_to}
+                  onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  required
+                >
+                  <option value="">Select user</option>
+                  {users.map((user) => (
+                    <option key={user._id} value={user._id}>
+                      {user.fullName} ({user.username}) - {user.role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Priority
+                </label>
+                <select
+                  value={taskForm.priority}
+                  onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={taskForm.due_date}
+                onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCreateModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={submitting}
+                icon={Plus}
+              >
+                Create Task
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Task Detail Modal */}
+        <Modal
+          isOpen={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+          title="Task Details"
+          size="lg"
+        >
+          {selectedTask && (
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {selectedTask.title}
+                  </h4>
+                  {getStatusBadge(selectedTask.status)}
+                </div>
+
+                {selectedTask.description && (
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {selectedTask.description}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <h5 className="font-medium text-gray-900 dark:text-white mb-1">
+                    Assigned To
+                  </h5>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {selectedTask.assignedTo?.fullName || selectedTask.assignedTo?.username || 'Unknown'}
+                  </p>
+                </div>
+
+                <div>
+                  <h5 className="font-medium text-gray-900 dark:text-white mb-1">
+                    Priority
+                  </h5>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    selectedTask.priority === 'high' ? 'bg-red-100 text-red-800' :
+                    selectedTask.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {selectedTask.priority}
+                  </span>
+                </div>
+
+                <div>
+                  <h5 className="font-medium text-gray-900 dark:text-white mb-1">
+                    Created
+                  </h5>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {new Date(selectedTask.createdAt).toLocaleString()}
+                  </p>
+                </div>
+
+                {selectedTask.dueDate && (
+                  <div>
+                    <h5 className="font-medium text-gray-900 dark:text-white mb-1">
+                      Due Date
+                    </h5>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {new Date(selectedTask.dueDate).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {selectedTask.completedAt && (
+                  <div>
+                    <h5 className="font-medium text-gray-900 dark:text-white mb-1">
+                      Completed
+                    </h5>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {new Date(selectedTask.completedAt).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {selectedTask.approvedBy && (
+                  <div>
+                    <h5 className="font-medium text-gray-900 dark:text-white mb-1">
+                      Approved By
+                    </h5>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {selectedTask.approvedBy?.fullName || selectedTask.approvedBy?.username || 'Unknown'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {selectedTask.notes && (
+                <div>
+                  <h5 className="font-medium text-gray-900 dark:text-white mb-2">
+                    Notes
+                  </h5>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {selectedTask.notes}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedTask(null)}
+                >
+                  Close
+                </Button>
+
+                {selectedTask.status === 'done' && (
+                  <>
+                    <Button
+                      variant="success"
+                      onClick={() => {
+                        handleApproveTask(selectedTask._id);
+                        setSelectedTask(null);
+                      }}
+                      icon={CheckCircle}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => {
+                        handleRejectTask(selectedTask._id);
+                        setSelectedTask(null);
+                      }}
+                      icon={X}
+                    >
+                      Reject
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </Modal>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default StaffTasks;

@@ -28,7 +28,10 @@ import AggregatorDisputes from "./pages/Aggregator/AggregatorDisputes";
 import AggregatorProfile from "./pages/Aggregator/AggregatorProfile";
 
 // Staff Pages (to be implemented)
-// import StaffDashboard from "./pages/Staff/StaffDashboard";
+import StaffDashboard from "./pages/Staff/StaffDashboard";
+import StaffTasks from "./pages/Staff/StaffTasks";
+import StaffDisputes from "./pages/Staff/StaffDisputes";
+import StaffMerchants from "./pages/Staff/StaffMerchants";
 
 // Merchant Pages
 import MerchantDashboard from "./pages/Merchant/MerchantDashboard";
@@ -138,14 +141,24 @@ const App = () => {
           } />
 
           {/* Staff Routes (placeholder for now) */}
-          <Route path="/staff/dashboard/*" element={
+          <Route path="/staff/dashboard" element={
             <RequireRole roles={['staff']}>
-              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Staff Dashboard</h2>
-                  <p className="text-gray-600">Coming soon...</p>
-                </div>
-              </div>
+              <StaffDashboard />
+            </RequireRole>
+          } />
+          <Route path="/staff/dashboard/tasks" element={
+            <RequireRole roles={['staff']}>
+              <StaffTasks />
+            </RequireRole>
+          } />
+          <Route path="/staff/dashboard/disputes" element={
+            <RequireRole roles={['staff']}>
+              <StaffDisputes />
+            </RequireRole>
+          } />
+          <Route path="/staff/dashboard/merchants" element={
+            <RequireRole roles={['staff']}>
+              <StaffMerchants />
             </RequireRole>
           } />
 
