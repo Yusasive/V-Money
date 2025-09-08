@@ -7,7 +7,7 @@ import {
   FiCheckCircle,
   FiLoader,
 } from "react-icons/fi";
-import { tasksApi } from "../../api/client";
+import { tasksApi, usersApi } from "../../api/client";
 
 const Header = () => (
   <div className="mb-6">
@@ -31,6 +31,7 @@ const Tasks = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [assignees, setAssignees] = useState([]);
   const [form, setForm] = useState({
     title: "",
     assigned_to: "",
@@ -40,8 +41,15 @@ const Tasks = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await tasksApi.list();
-      setTasks(data.tasks || []);
+      const [{ data: tasksRes }, { data: usersRes }] = await Promise.all([
+        tasksApi.list(),
+        usersApi.list({ limit: 100, role: "", status: "approved" }),
+      ]);
+      setTasks(tasksRes.tasks || []);
+      const candidates = (usersRes.users || []).filter((u) =>
+        ["staff", "aggregator"].includes(u.role)
+      );
+      setAssignees(candidates);
     } catch (e) {
       console.error(e);
     } finally {
@@ -114,18 +122,25 @@ const Tasks = () => {
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 dark:text-gray-300">
-                    Assigned To (User ID)
+                    Assign To
                   </label>
                   <div className="relative">
                     <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
+                    <select
                       className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                       value={form.assigned_to}
                       onChange={(e) =>
                         setForm({ ...form, assigned_to: e.target.value })
                       }
                       required
-                    />
+                    >
+                      <option value="">Select user</option>
+                      {assignees.map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.fullName || u.username} ({u.email}) - {u.role}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div>
@@ -187,41 +202,115 @@ const Tasks = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {tasks.map((t) => (
-                    <div
-                      key={t.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center justify-between bg-white dark:bg-gray-900"
-                    >
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {t.title}
+                  {tasks.map((t) => {
+                    const id = t._id || t.id;
+                    const assignedName =
+                      t.assignedTo?.fullName ||
+                      t.assignedTo?.username ||
+                      t.assigned_to ||
+                      "-";
+                    const due = t.dueDate || t.due_date;
+                    return (
+                      <div
+                        key={id}
+                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center justify-between bg-white dark:bg-gray-900"
+                      >
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {t.title}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Assigned to: {assignedName}{" "}
+                            {due && (
+                              <span className="ml-2">
+                                • Due: {new Date(due).toLocaleDateString()}
+                              </span>
+                            )}{" "}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          Assigned to: {t.assigned_to || "-"}{" "}
-                          {t.due_date && (
-                            <span className="ml-2">
-                              • Due: {new Date(t.due_date).toLocaleDateString()}
-                            </span>
-                          )}{" "}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${t.status === "done" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
-                        >
-                          {t.status}
-                        </span>
-                        {t.status !== "done" && (
-                          <button
-                            onClick={() => markDone(t.id)}
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              t.status === "completed"
+                                ? "bg-green-100 text-green-700"
+                                : t.status === "rejected"
+                                  ? "bg-red-100 text-red-700"
+                                  : t.status === "done"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-amber-100 text-amber-700"
+                            }`}
                           >
-                            Mark Done
+                            {t.status}
+                          </span>
+                          {t.status !== "done" && t.status !== "completed" && (
+                            <button
+                              onClick={() => markDone(id)}
+                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              Mark Done
+                            </button>
+                          )}
+                          {t.status === "done" && (
+                            <>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await tasksApi.approve(id);
+                                    await load();
+                                  } catch (e) {
+                                    alert(
+                                      e?.response?.data?.message ||
+                                        "Failed to approve"
+                                    );
+                                  }
+                                }}
+                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const reason =
+                                      window.prompt(
+                                        "Reason for rejection (optional):"
+                                      ) || "";
+                                    await tasksApi.reject(id, reason);
+                                    await load();
+                                  } catch (e) {
+                                    alert(
+                                      e?.response?.data?.message ||
+                                        "Failed to reject"
+                                    );
+                                  }
+                                }}
+                                className="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm("Delete this task?")) return;
+                              try {
+                                await tasksApi.delete(id);
+                                await load();
+                              } catch (e) {
+                                alert(
+                                  e?.response?.data?.message ||
+                                    "Failed to delete task"
+                                );
+                              }
+                            }}
+                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Delete
                           </button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

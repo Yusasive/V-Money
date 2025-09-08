@@ -557,6 +557,28 @@ const ContentManager = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!allContent[selectedId]?._id) return;
+    if (!window.confirm("Delete this content section? This cannot be undone."))
+      return;
+    try {
+      setSaving(true);
+      setMessage("");
+      await contentApi.delete(currentSection.id);
+      setAllContent((prev) => {
+        const next = { ...prev };
+        delete next[currentSection.id];
+        return next;
+      });
+      setIsEditing(false);
+      setMessage("Deleted successfully");
+    } catch (err) {
+      setMessage(err?.response?.data?.message || "Failed to delete content");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const labelize = (key) => key.replace(/([A-Z])/g, " $1").trim();
 
   return (
@@ -610,12 +632,22 @@ const ContentManager = () => {
               <h3 className="text-xl font-semibold">{currentSection.name}</h3>
               <div className="flex gap-2">
                 {!isEditing ? (
-                  <button
-                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    {allContent[selectedId]?._id ? "Edit" : "Create"}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      {allContent[selectedId]?._id ? "Edit" : "Create"}
+                    </button>
+                    {allContent[selectedId]?._id && (
+                      <button
+                        className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+                        onClick={handleDelete}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <>
                     <button

@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Routes, Route, NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { authApi, formsApi, contentApi } from "../../api/client";
+import { authApi, formsApi, contentApi, usersApi } from "../../api/client";
 import ContentManager from "./ContentManager";
 import FormSubmissions from "./FormSubmissions";
 import FileUpload from "./FileUpload";
 import Tasks from "./Tasks";
 import Merchants from "./Merchants";
 import Disputes from "./Disputes";
+import Users from "./Users";
 import RequireRole from "../../components/Auth/RequireRole";
 import { FiMoon, FiSun, FiEdit, FiFileText, FiUpload } from "react-icons/fi";
+import { FaUsers } from "react-icons/fa";
 
 const AdminDashboard = () => {
   const [user, setUser] = useState(null);
@@ -17,6 +19,8 @@ const AdminDashboard = () => {
     totalSubmissions: 0,
     pendingSubmissions: 0,
     contentSections: 0,
+    totalUsers: 0,
+    pendingUsers: 0,
   });
   const [isDark, setIsDark] = useState(() => {
     const root = document.documentElement;
@@ -40,19 +44,30 @@ const AdminDashboard = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const [submissionsRes, contentRes] = await Promise.all([
-        formsApi.list({ page: 1, limit: 1 }), // just to get counts, adjust if needed
-        contentApi.list(),
-      ]);
+      const [submissionsRes, contentRes, usersAllRes, usersPendingRes] =
+        await Promise.all([
+          formsApi.list({ page: 1, limit: 1 }), // just to get counts, adjust if needed
+          contentApi.list(),
+          usersApi.list({ page: 1, limit: 1 }),
+          usersApi.list({ page: 1, limit: 50, status: "pending" }),
+        ]);
 
-      const pendingCount = (submissionsRes.data.submissions || []).filter(
+      const pendingSubmissions = (submissionsRes.data.submissions || []).filter(
         (sub) => sub.status === "pending"
       ).length;
 
       setStats({
         totalSubmissions: submissionsRes.data.total || 0,
-        pendingSubmissions: pendingCount,
+        pendingSubmissions,
         contentSections: (contentRes.data || []).length,
+        totalUsers:
+          usersAllRes.data.pagination?.total ||
+          usersAllRes.data.users?.length ||
+          0,
+        pendingUsers:
+          usersPendingRes.data.pagination?.total ||
+          usersPendingRes.data.users?.length ||
+          0,
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -141,6 +156,7 @@ const AdminDashboard = () => {
                 { to: "/admin/dashboard/tasks", label: "Tasks" },
                 { to: "/admin/dashboard/merchants", label: "Merchants" },
                 { to: "/admin/dashboard/disputes", label: "Disputes" },
+                { to: "/admin/dashboard/users", label: "Users" },
                 {
                   to: "/admin/dashboard/submissions",
                   label: "Form Submissions",
@@ -205,6 +221,14 @@ const AdminDashboard = () => {
               }
             />
             <Route
+              path="/users"
+              element={
+                <RequireRole roles={["admin"]}>
+                  <Users />
+                </RequireRole>
+              }
+            />
+            <Route
               path="/submissions"
               element={
                 <RequireRole roles={["admin"]}>
@@ -242,14 +266,21 @@ const DashboardHome = ({ stats }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           {
+            title: "Total Users",
+            value: stats.totalUsers,
+            color: "from-indigo-500 to-blue-500",
+          },
+          {
+            title: "Pending Approvals",
+            value: stats.pendingUsers,
+            color: "from-amber-500 to-orange-500",
+            href: "/admin/dashboard/users?status=pending",
+            linkLabel: "View",
+          },
+          {
             title: "Total Submissions",
             value: stats.totalSubmissions,
             color: "from-blue-500 to-cyan-500",
-          },
-          {
-            title: "Pending Reviews",
-            value: stats.pendingSubmissions,
-            color: "from-amber-500 to-orange-500",
           },
           {
             title: "Content Sections",
@@ -265,8 +296,18 @@ const DashboardHome = ({ stats }) => {
               className={`absolute -top-10 -right-10 h-32 w-32 bg-gradient-to-br ${c.color} opacity-20 rounded-full`}
             />
             <div className="p-6 relative">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {c.title}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {c.title}
+                </div>
+                {c.href && (
+                  <NavLink
+                    to={c.href}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {c.linkLabel || "Open"}
+                  </NavLink>
+                )}
               </div>
               <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
                 {c.value}
@@ -281,7 +322,7 @@ const DashboardHome = ({ stats }) => {
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Quick Actions
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <NavLink
             to="/admin/dashboard/content"
             className="group p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary hover:shadow transition"
@@ -313,6 +354,22 @@ const DashboardHome = ({ stats }) => {
                   Review Submissions
                 </div>
                 <div className="text-sm text-gray-500">Manage user forms</div>
+              </div>
+            </div>
+          </NavLink>
+          <NavLink
+            to="/admin/dashboard/users"
+            className="group p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary hover:shadow transition"
+          >
+            <div className="flex items-center gap-3">
+              <span className="h-9 w-9 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center">
+                <FaUsers size={18} />
+              </span>
+              <div>
+                <div className="font-medium text-gray-900 dark:text-white">
+                  Manage Users
+                </div>
+                <div className="text-sm text-gray-500">Approve or suspend</div>
               </div>
             </div>
           </NavLink>

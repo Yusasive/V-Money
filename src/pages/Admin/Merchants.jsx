@@ -9,7 +9,7 @@ import {
   FiTrendingUp,
 } from "react-icons/fi";
 import formatTimeAgo from "../../utils/formatTimeAgo";
-import { merchantsApi } from "../../api/client";
+import { merchantsApi, usersApi } from "../../api/client";
 
 const Header = () => (
   <div className="mb-6">
@@ -32,21 +32,52 @@ const Header = () => (
 const Merchants = () => {
   const [merchantId, setMerchantId] = useState("");
   const [merchant, setMerchant] = useState(null);
+  const [assignees, setAssignees] = useState([]);
   const [createForm, setCreateForm] = useState({
+    userId: "",
     username: "",
-    business_name: "",
+    businessName: "",
     email: "",
     phone: "",
+    address: "",
+    businessAddress: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    gender: "",
+    state: "",
+    lga: "",
+    bvn: "",
+    nin: "",
+    serialNo: "",
   });
   const [txnForm, setTxnForm] = useState({ txn_date: "", txn_count: 0 });
 
   const createMerchant = async (e) => {
     e.preventDefault();
     try {
-      const { data } = await merchantsApi.create(createForm);
-      setMerchantId(data.merchant.id);
+      const payload = { ...createForm };
+      const { data } = await merchantsApi.create(payload);
+      setMerchantId(data.merchant._id || data.merchant.id);
       setMerchant(data.merchant);
-      setCreateForm({ username: "", business_name: "", email: "", phone: "" });
+      setCreateForm({
+        userId: "",
+        username: "",
+        businessName: "",
+        email: "",
+        phone: "",
+        address: "",
+        businessAddress: "",
+        firstName: "",
+        middleName: "",
+        lastName: "",
+        gender: "",
+        state: "",
+        lga: "",
+        bvn: "",
+        nin: "",
+        serialNo: "",
+      });
     } catch (e) {
       alert(e?.response?.data?.message || "Failed to create merchant");
     }
@@ -78,6 +109,21 @@ const Merchants = () => {
     // eslint-disable-next-line
   }, [merchantId]);
 
+  useEffect(() => {
+    // load users for selection
+    (async () => {
+      try {
+        const { data } = await usersApi.list({
+          limit: 200,
+          status: "approved",
+        });
+        setAssignees(data.users || []);
+      } catch (e) {
+        console.error("Failed to load users");
+      }
+    })();
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -96,6 +142,27 @@ const Merchants = () => {
                 Create Merchant
               </h3>
               <form onSubmit={createMerchant} className="space-y-3">
+                {/* User selection */}
+                <div>
+                  <label className="text-sm text-gray-600 dark:text-gray-300">
+                    Linked User
+                  </label>
+                  <select
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={createForm.userId}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, userId: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Select user</option>
+                    {assignees.map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.fullName || u.username} ({u.email}) - {u.role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="relative">
                   <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
@@ -111,11 +178,11 @@ const Merchants = () => {
                 <input
                   className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Business Name"
-                  value={createForm.business_name}
+                  value={createForm.businessName}
                   onChange={(e) =>
                     setCreateForm({
                       ...createForm,
-                      business_name: e.target.value,
+                      businessName: e.target.value,
                     })
                   }
                   required
@@ -142,8 +209,133 @@ const Merchants = () => {
                     onChange={(e) =>
                       setCreateForm({ ...createForm, phone: e.target.value })
                     }
+                    required
                   />
                 </div>
+
+                {/* Address */}
+                <input
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Address"
+                  value={createForm.address}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, address: e.target.value })
+                  }
+                  required
+                />
+                <input
+                  className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Business Address (optional)"
+                  value={createForm.businessAddress}
+                  onChange={(e) =>
+                    setCreateForm({
+                      ...createForm,
+                      businessAddress: e.target.value,
+                    })
+                  }
+                />
+
+                {/* Personal Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="First Name"
+                    value={createForm.firstName}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        firstName: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Middle Name (optional)"
+                    value={createForm.middleName}
+                    onChange={(e) =>
+                      setCreateForm({
+                        ...createForm,
+                        middleName: e.target.value,
+                      })
+                    }
+                  />
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Last Name"
+                    value={createForm.lastName}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, lastName: e.target.value })
+                    }
+                    required
+                  />
+                  <select
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={createForm.gender}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, gender: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Region */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="State"
+                    value={createForm.state}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, state: e.target.value })
+                    }
+                    required
+                  />
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="LGA"
+                    value={createForm.lga}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, lga: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                {/* Identity */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="BVN (11 digits)"
+                    value={createForm.bvn}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, bvn: e.target.value })
+                    }
+                    required
+                  />
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="NIN (11 digits)"
+                    value={createForm.nin}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, nin: e.target.value })
+                    }
+                    required
+                  />
+                  <input
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Serial No (optional)"
+                    value={createForm.serialNo}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, serialNo: e.target.value })
+                    }
+                  />
+                </div>
+
                 <button className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded shadow hover:shadow-md transition">
                   Create
                 </button>
@@ -179,17 +371,22 @@ const Merchants = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {merchant.business_name} ({merchant.username})
+                        {(merchant.businessName || merchant.business_name) ??
+                          "-"}{" "}
+                        ({merchant.username})
                       </div>
                       <div className="text-sm text-gray-500">
                         {merchant.email} • {merchant.phone || "-"}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        Last seen: {formatTimeAgo(merchant.last_seen)}
+                        Last seen:{" "}
+                        {formatTimeAgo(
+                          merchant.lastActivityDate || merchant.last_seen
+                        )}
                       </div>
                     </div>
                     <span
-                      className={`text-xs px-2 py-1 rounded-full ${merchant.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-700"}`}
+                      className={`text-xs px-2 py-1 rounded-full ${merchant.status === "active" ? "bg-green-100 text-green-700" : merchant.status === "flagged" ? "bg-amber-100 text-amber-700" : "bg-gray-200 text-gray-700"}`}
                     >
                       {merchant.status}
                     </span>

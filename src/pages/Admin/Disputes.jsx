@@ -6,7 +6,7 @@ import {
   FiClipboard,
   FiCheckCircle,
 } from "react-icons/fi";
-import { disputesApi } from "../../api/client";
+import { disputesApi, merchantsApi, usersApi } from "../../api/client";
 
 const Header = () => (
   <div className="mb-6">
@@ -28,6 +28,8 @@ const Header = () => (
 
 const Disputes = () => {
   const [disputes, setDisputes] = useState([]);
+  const [merchants, setMerchants] = useState([]);
+  const [assignees, setAssignees] = useState([]);
   const [form, setForm] = useState({
     merchant_id: "",
     description: "",
@@ -36,8 +38,21 @@ const Disputes = () => {
 
   const load = async () => {
     try {
-      const { data } = await disputesApi.list();
-      setDisputes(data.disputes || []);
+      const [
+        { data: disputesRes },
+        { data: merchantsRes },
+        { data: usersRes },
+      ] = await Promise.all([
+        disputesApi.list(),
+        merchantsApi.list({ limit: 100 }),
+        usersApi.list({ limit: 100, status: "approved" }),
+      ]);
+      setDisputes(disputesRes.disputes || []);
+      setMerchants(merchantsRes.merchants || []);
+      const candidates = (usersRes.users || []).filter((u) =>
+        ["staff", "aggregator"].includes(u.role)
+      );
+      setAssignees(candidates);
     } catch (e) {
       console.error(e);
     }
@@ -63,10 +78,20 @@ const Disputes = () => {
 
   const resolve = async (id) => {
     try {
-      await disputesApi.update(id, { status: "resolved" });
+      await disputesApi.close(id); // ensure resolved via close endpoint
       await load();
     } catch (e) {
-      alert("Failed to update dispute");
+      alert(e?.response?.data?.message || "Failed to resolve dispute");
+    }
+  };
+
+  const removeDispute = async (id) => {
+    if (!window.confirm("Delete this dispute? This cannot be undone.")) return;
+    try {
+      await disputesApi.delete(id);
+      await load();
+    } catch (e) {
+      alert(e?.response?.data?.message || "Failed to delete dispute");
     }
   };
 
@@ -90,16 +115,26 @@ const Disputes = () => {
               <form onSubmit={submit} className="space-y-3">
                 <div>
                   <label className="text-sm text-gray-600 dark:text-gray-300">
-                    Merchant ID
+                    Merchant
                   </label>
-                  <input
+                  <select
                     className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     value={form.merchant_id}
                     onChange={(e) =>
                       setForm({ ...form, merchant_id: e.target.value })
                     }
                     required
-                  />
+                  >
+                    <option value="">Select merchant</option>
+                    {merchants.map((m) => (
+                      <option key={m._id} value={m._id}>
+                        {m.businessName ||
+                          m.username ||
+                          `${m.firstName || ""} ${m.lastName || ""}`.trim()}{" "}
+                        ({m.email})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 dark:text-gray-300">
@@ -119,17 +154,24 @@ const Disputes = () => {
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 dark:text-gray-300">
-                    Assign To (User ID)
+                    Assign To (optional)
                   </label>
                   <div className="relative">
                     <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
+                    <select
                       className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                       value={form.assigned_to}
                       onChange={(e) =>
                         setForm({ ...form, assigned_to: e.target.value })
                       }
-                    />
+                    >
+                      <option value="">Unassigned</option>
+                      {assignees.map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.fullName || u.username} ({u.email}) - {u.role}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <button className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded shadow hover:shadow-md transition">
@@ -174,12 +216,18 @@ const Disputes = () => {
                         </span>
                         {d.status !== "resolved" && (
                           <button
-                            onClick={() => resolve(d.id)}
+                            onClick={() => resolve(d._id || d.id)}
                             className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-1"
                           >
                             <FiCheckCircle /> Resolve
                           </button>
                         )}
+                        <button
+                          onClick={() => removeDispute(d._id || d.id)}
+                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   ))}
