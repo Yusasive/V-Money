@@ -41,12 +41,16 @@ import MerchantDashboard from "./pages/Merchant/MerchantDashboard";
 // Auth Components
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import AuthGuard from "./components/Auth/AuthGuard";
+import SessionManager from "./components/UI/SessionManager";
 
 const App = () => {
   return (
     <AuthProvider>
       <Router>
         <div className="App">
+          {/* Global Session Manager */}
+          <SessionManager />
+          
           <Toaster
             position="top-right"
             toastOptions={{
@@ -253,6 +257,13 @@ const App = () => {
                     <p className="text-gray-600">
                       The page you're looking for doesn't exist.
                     </p>
+                    <Button
+                      variant="primary"
+                      onClick={() => window.location.href = '/'}
+                      className="mt-4"
+                    >
+                      Go Home
+                    </Button>
                   </div>
                 </div>
               }

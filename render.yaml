@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: vmonie-backend
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build:server
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: vmonie-backend
+          property: port
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          type: web
+          name: vmonie-backend
+          property: host
+    healthCheckPath: /health
+    
+  - type: web
+    name: vmonie-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          type: web
+          name: vmonie-backend
+          property: host
+        sync: false
+
+databases:
+  - name: vmonie-mongodb
+    databaseName: vmonie
+    user: vmonie_user

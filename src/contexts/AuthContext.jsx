@@ -9,7 +9,9 @@ const initialState = {
   isAuthenticated: false,
   isLoading: true,
   error: null,
-  sessionExpired: false
+  sessionExpired: false,
+  lastActivity: null,
+  sessionTimeout: null
 };
 
 // Auth actions
@@ -21,7 +23,8 @@ const AUTH_ACTIONS = {
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
   SESSION_EXPIRED: 'SESSION_EXPIRED',
-  RESET_SESSION_EXPIRED: 'RESET_SESSION_EXPIRED'
+  RESET_SESSION_EXPIRED: 'RESET_SESSION_EXPIRED',
+  UPDATE_ACTIVITY: 'UPDATE_ACTIVITY'
 };
 
 // Auth reducer
@@ -41,7 +44,8 @@ const authReducer = (state, action) => {
         isAuthenticated: true,
         isLoading: false,
         error: null,
-        sessionExpired: false
+        sessionExpired: false,
+        lastActivity: Date.now()
       };
       
     case AUTH_ACTIONS.LOGOUT:
@@ -55,7 +59,8 @@ const authReducer = (state, action) => {
         ...state,
         user: action.payload,
         isAuthenticated: !!action.payload,
-        isLoading: false
+        isLoading: false,
+        lastActivity: Date.now()
       };
       
     case AUTH_ACTIONS.SET_ERROR:
@@ -86,6 +91,12 @@ const authReducer = (state, action) => {
         sessionExpired: false
       };
       
+    case AUTH_ACTIONS.UPDATE_ACTIVITY:
+      return {
+        ...state,
+        lastActivity: Date.now()
+      };
+      
     default:
       return state;
   }
@@ -94,9 +105,52 @@ const authReducer = (state, action) => {
 // Create context
 const AuthContext = createContext();
 
+// Session timeout duration (30 minutes of inactivity)
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+
 // Auth provider component
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+
+  // Activity tracking
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+
+    const updateActivity = () => {
+      dispatch({ type: AUTH_ACTIONS.UPDATE_ACTIVITY });
+    };
+
+    // Track user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => {
+      document.addEventListener(event, updateActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, updateActivity);
+      });
+    };
+  }, [state.isAuthenticated]);
+
+  // Session timeout management
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.lastActivity) return;
+
+    const checkSession = () => {
+      const now = Date.now();
+      const timeSinceActivity = now - state.lastActivity;
+      
+      if (timeSinceActivity > SESSION_TIMEOUT) {
+        dispatch({ type: AUTH_ACTIONS.SESSION_EXPIRED });
+        localStorage.removeItem('authToken');
+        toast.error('Session expired due to inactivity');
+      }
+    };
+
+    const interval = setInterval(checkSession, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [state.isAuthenticated, state.lastActivity]);
 
   // Initialize auth state on app load
   useEffect(() => {
@@ -105,6 +159,21 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('authToken');
         if (!token) {
           dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
+          return;
+        }
+
+        // Check if token is expired before making request
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.exp * 1000 < Date.now()) {
+            localStorage.removeItem('authToken');
+            dispatch({ type: AUTH_ACTIONS.SESSION_EXPIRED });
+            return;
+          }
+        } catch (e) {
+          // Invalid token format
+          localStorage.removeItem('authToken');
+          dispatch({ type: AUTH_ACTIONS.LOGOUT });
           return;
         }
 
@@ -145,6 +214,11 @@ export const AuthProvider = ({ children }) => {
       const response = await authApi.login(credentials);
       const { user, access_token } = response.data;
       
+      // Validate response data
+      if (!user || !access_token) {
+        throw new Error('Invalid login response');
+      }
+      
       // Store token
       localStorage.setItem('authToken', access_token);
       
@@ -167,7 +241,9 @@ export const AuthProvider = ({ children }) => {
   const logout = async (showToast = true) => {
     try {
       // Call server logout to invalidate session
-      await authApi.logout();
+      if (state.isAuthenticated) {
+        await authApi.logout();
+      }
     } catch (error) {
       // Continue with logout even if server call fails
       console.error('Server logout failed:', error);
@@ -185,7 +261,11 @@ export const AuthProvider = ({ children }) => {
   // Logout from all devices
   const logoutAll = async () => {
     try {
-      await authApi.logoutAll?.() || authApi.logout();
+      if (authApi.logoutAll) {
+        await authApi.logoutAll();
+      } else {
+        await authApi.logout();
+      }
       localStorage.removeItem('authToken');
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
       toast.success('Logged out from all devices');
@@ -203,6 +283,14 @@ export const AuthProvider = ({ children }) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+      
+      // Validate required fields
+      const requiredFields = ['fullName', 'email', 'phone', 'username', 'password'];
+      const missingFields = requiredFields.filter(field => !userData[field]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
       
       const response = await authApi.register(userData);
       
@@ -225,10 +313,38 @@ export const AuthProvider = ({ children }) => {
       const response = await authApi.me(); // Refresh user data
       const user = response.data.user;
       dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+      dispatch({ type: AUTH_ACTIONS.UPDATE_ACTIVITY });
       return user;
     } catch (error) {
       console.error('Failed to update user:', error);
       throw error;
+    }
+  };
+
+  // Refresh token if needed
+  const refreshToken = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return false;
+      
+      // Check if token expires soon (within 1 hour)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expiresIn = payload.exp * 1000 - Date.now();
+      
+      if (expiresIn < 60 * 60 * 1000) { // Less than 1 hour
+        const response = await authApi.me();
+        const user = response.data.user;
+        
+        // Generate new token (this would need server support)
+        // For now, just update user data
+        dispatch({ type: AUTH_ACTIONS.SET_USER, payload: user });
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
     }
   };
 
@@ -261,6 +377,18 @@ export const AuthProvider = ({ children }) => {
     return userPermissions.includes('*') || userPermissions.includes(permission);
   };
 
+  // Check if user account is fully active
+  const isAccountActive = () => {
+    if (!state.user) return false;
+    return state.user.status === 'approved' && state.isAuthenticated;
+  };
+
+  // Check if user needs onboarding
+  const needsOnboarding = () => {
+    if (!state.user) return false;
+    return !state.user.onboardingData && ['aggregator', 'staff'].includes(state.user.role);
+  };
+
   // Get dashboard route based on user role
   const getDashboardRoute = () => {
     if (!state.user) return '/login';
@@ -279,6 +407,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Get appropriate login route based on context
+  const getLoginRoute = () => {
+    // Check if we're in admin context
+    if (window.location.pathname.startsWith('/admin')) {
+      return '/admin/login';
+    }
+    return '/login';
+  };
+
+  // Session management utilities
+  const getSessionInfo = () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return null;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return {
+        issuedAt: new Date(payload.iat * 1000),
+        expiresAt: new Date(payload.exp * 1000),
+        timeUntilExpiry: payload.exp * 1000 - Date.now(),
+        isExpiringSoon: (payload.exp * 1000 - Date.now()) < 60 * 60 * 1000 // Less than 1 hour
+      };
+    } catch (e) {
+      return null;
+    }
+  };
+
   const value = {
     // State
     ...state,
@@ -289,12 +444,17 @@ export const AuthProvider = ({ children }) => {
     logoutAll,
     register,
     updateUser,
+    refreshToken,
     clearSessionExpired,
     
     // Utilities
     hasRole,
     hasPermission,
-    getDashboardRoute
+    isAccountActive,
+    needsOnboarding,
+    getDashboardRoute,
+    getLoginRoute,
+    getSessionInfo
   };
 
   return (

@@ -6,11 +6,21 @@ import Logo from "../../assets/logo.png";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import Button from "../UI/Button";
+import Badge from "../UI/Badge";
 
 const Navbar = () => {
   const location = useLocation();
-  const { isAuthenticated, user, logout, getDashboardRoute } = useAuth();
+  const { 
+    isAuthenticated, 
+    user, 
+    logout, 
+    getDashboardRoute, 
+    isAccountActive,
+    needsOnboarding,
+    getSessionInfo 
+  } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -18,15 +28,39 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
+      setLoggingOut(true);
       await logout();
       setIsOpen(false);
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
+      setLoggingOut(false);
     }
   };
 
+  // Get session status for display
+  const sessionInfo = getSessionInfo();
+  const showSessionWarning = sessionInfo?.isExpiringSoon && isAuthenticated;
+
   return (
     <div className="sticky top-0 z-50 bg-white bg-opacity-5 backdrop-blur-lg shadow-lg font-averta navbar">
+      {/* Session expiry warning */}
+      {showSessionWarning && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <p className="text-sm text-amber-800">
+              ⚠️ Your session will expire soon. Please save your work.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-amber-600 hover:text-amber-800 underline"
+            >
+              Refresh Session
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between px-4 lg:px-16  py-2">
         <div>
           <Link to="/">
@@ -85,7 +119,22 @@ const Navbar = () => {
             {/* Auth-aware navigation */}
             <div className="flex flex-row lg:flex-row justify-center py-5 space-x-6">
               {isAuthenticated ? (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
+                  {/* User info with status */}
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                      <p className="text-xs text-gray-600">Welcome back,</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {user?.fullName?.split(' ')[0] || user?.username}
+                      </p>
+                    </div>
+                    {user?.status && user.status !== 'approved' && (
+                      <Badge variant={user.status === 'pending' ? 'warning' : 'danger'} size="sm">
+                        {user.status}
+                      </Badge>
+                    )}
+                  </div>
+                  
                   <Link
                     to={getDashboardRoute()}
                     className="bg-primary hover:bg-blue-700 text-white py-3 px-6 rounded-xl text-center transition-colors"
@@ -94,9 +143,10 @@ const Navbar = () => {
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center transition-colors"
+                    disabled={loggingOut}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center transition-colors disabled:opacity-50"
                   >
-                    Logout
+                    {loggingOut ? 'Logging out...' : 'Logout'}
                   </button>
                 </div>
               ) : (
@@ -144,6 +194,7 @@ const Navbar = () => {
                 ? "text-primary text-start text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
             }
+            onClick={() => setIsOpen(false)}
           >
             PRODUCT
           </NavLink>
@@ -154,6 +205,7 @@ const Navbar = () => {
                 ? "text-primary text-start text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
             }
+            onClick={() => setIsOpen(false)}
           >
             RESOURCES
           </NavLink>
@@ -164,6 +216,7 @@ const Navbar = () => {
                 ? "text-primary  text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
             }
+            onClick={() => setIsOpen(false)}
           >
             COMPANY
           </NavLink>
@@ -174,6 +227,7 @@ const Navbar = () => {
                 ? "text-primary text-base font-semibold font-lota"
                 : "text-gray-700 text-sm font-semibold font-lota hover:text-primary"
             }
+            onClick={() => setIsOpen(false)}
           >
             PRICING
           </NavLink>
@@ -183,6 +237,18 @@ const Navbar = () => {
         <div className="mt-4 flex flex-col gap-3 w-full px-8">
           {isAuthenticated ? (
             <>
+              {/* User status in mobile */}
+              <div className="text-center py-2">
+                <p className="text-sm text-gray-600">
+                  {user?.fullName || user?.username}
+                </p>
+                {user?.status && user.status !== 'approved' && (
+                  <Badge variant={user.status === 'pending' ? 'warning' : 'danger'} size="sm">
+                    {user.status}
+                  </Badge>
+                )}
+              </div>
+              
               <Link
                 to={getDashboardRoute()}
                 className="bg-primary hover:bg-blue-700 text-white py-3 px-6 rounded-xl text-center w-full transition-colors"
@@ -192,9 +258,10 @@ const Navbar = () => {
               </Link>
               <button
                 onClick={handleLogout}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center w-full transition-colors"
+                disabled={loggingOut}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center w-full transition-colors disabled:opacity-50"
               >
-                Logout
+                {loggingOut ? 'Logging out...' : 'Logout'}
               </button>
             </>
           ) : (
