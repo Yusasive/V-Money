@@ -23,7 +23,14 @@ import toast from "react-hot-toast";
 
 const DashboardLayout = ({ children, userRole }) => {
   const [user, setUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Open by default on large screens so desktop layout shows the sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try {
+      return window.innerWidth >= 1024;
+    } catch (e) {
+      return false;
+    }
+  });
   const [isDark, setIsDark] = useState(() => {
     return (
       localStorage.getItem("theme") === "dark" ||
@@ -59,9 +66,13 @@ const DashboardLayout = ({ children, userRole }) => {
     }
   }, [isDark]);
 
-  // Close sidebar when route changes on mobile
+  // Close sidebar when route changes, but only on small screens
   useEffect(() => {
-    setSidebarOpen(false);
+    try {
+      if (window.innerWidth < 1024) setSidebarOpen(false);
+    } catch (e) {
+      setSidebarOpen(false);
+    }
   }, [location.pathname]);
 
   const handleLogout = async () => {
@@ -82,9 +93,7 @@ const DashboardLayout = ({ children, userRole }) => {
 
   // Navigation items based on role
   const getNavigationItems = () => {
-    const baseItems = [
-      { name: "Dashboard", href: "", icon: Home, end: true },
-    ];
+    const baseItems = [{ name: "Dashboard", href: "", icon: Home, end: true }];
 
     switch (userRole) {
       case "admin":
@@ -142,11 +151,11 @@ const DashboardLayout = ({ children, userRole }) => {
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ 
+        animate={{
           x: sidebarOpen ? 0 : "-100%",
-          transition: { type: "spring", damping: 25, stiffness: 200 }
+          transition: { type: "spring", damping: 25, stiffness: 200 },
         }}
-        className="fixed top-0 left-0 z-50 h-full w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-r border-gray-200 dark:border-gray-700 lg:translate-x-0 lg:static lg:inset-0 shadow-xl lg:shadow-none"
+        className="fixed top-0 left-0 z-50 h-full w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-r border-gray-200 dark:border-gray-700 lg:translate-x-0 lg:fixed lg:inset-y-0 lg:left-0 shadow-xl lg:shadow-none"
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
@@ -189,7 +198,14 @@ const DashboardLayout = ({ children, userRole }) => {
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
                     }
                   `}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => {
+                    try {
+                      if (window.innerWidth < 1024) setSidebarOpen(false);
+                    } catch (e) {
+                      // fallback: close sidebar
+                      setSidebarOpen(false);
+                    }
+                  }}
                 >
                   <Icon className="h-5 w-5 flex-shrink-0" />
                   <span className="truncate">{item.name}</span>
@@ -224,7 +240,9 @@ const DashboardLayout = ({ children, userRole }) => {
                 ) : (
                   <Moon className="h-4 w-4" />
                 )}
-                <span className="hidden sm:inline">{isDark ? "Light" : "Dark"}</span>
+                <span className="hidden sm:inline">
+                  {isDark ? "Light" : "Dark"}
+                </span>
               </button>
 
               <button
@@ -265,7 +283,9 @@ const DashboardLayout = ({ children, userRole }) => {
                   Welcome back,
                 </p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {user?.fullName?.split(' ')[0] || user?.email?.split("@")[0] || "User"}
+                  {user?.fullName?.split(" ")[0] ||
+                    user?.email?.split("@")[0] ||
+                    "User"}
                 </p>
               </div>
 
@@ -286,9 +306,7 @@ const DashboardLayout = ({ children, userRole }) => {
 
         {/* Page content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+          <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, MessageSquare, Clock } from "lucide-react";
+import { AlertTriangle, MessageSquare, Clock, User } from "lucide-react";
 import DashboardLayout from "../../components/Layout/DashboardLayout";
 import PageHeader from "../../components/UI/PageHeader";
 import Button from "../../components/UI/Button";
@@ -25,6 +25,7 @@ const AggregatorDisputes = () => {
     try {
       setLoading(true);
       const response = await disputesApi.list();
+      console.log("Fetched disputes:", response.data);
       setDisputes(response.data.disputes || []);
     } catch (error) {
       console.error("Failed to fetch disputes:", error);
@@ -39,8 +40,16 @@ const AggregatorDisputes = () => {
     if (!responseText.trim()) return;
 
     try {
+      console.log("Submitting response:", {
+        disputeId: selectedDispute._id || selectedDispute.id,
+        response: responseText,
+      });
       setSubmittingResponse(true);
-      await disputesApi.respond(selectedDispute._id, responseText);
+      const result = await disputesApi.respond(
+        selectedDispute._id || selectedDispute.id,
+        responseText
+      );
+      console.log("Response result:", result.data);
       toast.success("Response submitted successfully");
       setResponseText("");
       setSelectedDispute(null);
@@ -131,7 +140,10 @@ const AggregatorDisputes = () => {
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4" />
-                            Raised by: {dispute.createdBy?.fullName || dispute.createdBy?.username || "Unknown"}
+                            Raised by:{" "}
+                            {dispute.createdBy?.fullName ||
+                              dispute.createdBy?.username ||
+                              "Unknown"}
                           </div>
 
                           <div className="flex items-center gap-1">
@@ -211,7 +223,9 @@ const AggregatorDisputes = () => {
                     Raised By
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {selectedDispute.createdBy?.fullName || selectedDispute.createdBy?.username || "Unknown"}
+                    {selectedDispute.createdBy?.fullName ||
+                      selectedDispute.createdBy?.username ||
+                      "Unknown"}
                   </p>
                 </div>
 

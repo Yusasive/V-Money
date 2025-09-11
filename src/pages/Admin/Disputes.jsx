@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
-  AlertTriangle,
-  User,
-  Clipboard,
-  CheckCircle,
+  FiAlertTriangle as AlertTriangle,
+  FiUser as User,
+  FiClipboard as Clipboard,
+  FiCheckCircle as CheckCircle,
+  FiMessageCircle as MessageCircle,
 } from "react-icons/fi";
 import PageHeader from "../../components/UI/PageHeader";
 import Button from "../../components/UI/Button";
+import Modal from "../../components/UI/Modal";
 import { disputesApi, merchantsApi, usersApi } from "../../api/client";
+import toast from "react-hot-toast";
 
 const Disputes = () => {
   const [disputes, setDisputes] = useState([]);
@@ -16,9 +18,17 @@ const Disputes = () => {
   const [assignees, setAssignees] = useState([]);
   const [form, setForm] = useState({
     merchant_id: "",
+    title: "",
     description: "",
+    raised_against: "",
     assigned_to: "",
   });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [selectedDispute, setSelectedDispute] = useState(null);
+  const [responseText, setResponseText] = useState("");
+  const [submittingResponse, setSubmittingResponse] = useState(false);
+
+  // Removed duplicate handleSubmitResponse function
 
   const load = async () => {
     try {
@@ -55,8 +65,9 @@ const Disputes = () => {
       });
       setForm({ merchant_id: "", description: "", assigned_to: "" });
       await load();
+      toast.success("Dispute logged");
     } catch (e) {
-      alert(e?.response?.data?.message || "Failed to log dispute");
+      toast.error(e?.response?.data?.message || "Failed to log dispute");
     }
   };
 
@@ -64,18 +75,48 @@ const Disputes = () => {
     try {
       await disputesApi.close(id); // ensure resolved via close endpoint
       await load();
+      toast.success("Dispute resolved");
     } catch (e) {
-      alert(e?.response?.data?.message || "Failed to resolve dispute");
+      toast.error(e?.response?.data?.message || "Failed to resolve dispute");
     }
   };
 
   const removeDispute = async (id) => {
-    if (!window.confirm("Delete this dispute? This cannot be undone.")) return;
+    setConfirmDeleteId(id);
+  };
+
+  const confirmRemove = async () => {
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
+    if (!id) return;
     try {
       await disputesApi.delete(id);
       await load();
+      toast.success("Dispute deleted");
     } catch (e) {
-      alert(e?.response?.data?.message || "Failed to delete dispute");
+      toast.error(e?.response?.data?.message || "Failed to delete dispute");
+    }
+  };
+
+  const handleSubmitResponse = async (e) => {
+    e.preventDefault();
+    if (!responseText.trim() || !selectedDispute) return;
+
+    try {
+      setSubmittingResponse(true);
+      await disputesApi.respond(
+        selectedDispute._id || selectedDispute.id,
+        responseText
+      );
+      toast.success("Response submitted successfully");
+      setResponseText("");
+      setSelectedDispute(null);
+      load();
+    } catch (error) {
+      console.error("Failed to submit response:", error);
+      toast.error("Failed to submit response");
+    } finally {
+      setSubmittingResponse(false);
     }
   };
 
@@ -107,7 +148,7 @@ const Disputes = () => {
                     Merchant
                   </label>
                   <select
-                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                     value={form.merchant_id}
                     onChange={(e) =>
                       setForm({ ...form, merchant_id: e.target.value })
@@ -127,12 +168,50 @@ const Disputes = () => {
                 </div>
                 <div>
                   <label className="text-sm text-gray-600 dark:text-gray-300">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.title}
+                    onChange={(e) =>
+                      setForm({ ...form, title: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 dark:text-gray-300">
+                    Raised Against (user)
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <select
+                      className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.raised_against}
+                      onChange={(e) =>
+                        setForm({ ...form, raised_against: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Select user</option>
+                      {assignees.map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.fullName || u.username} ({u.email}) - {u.role}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 dark:text-gray-300">
                     Description
                   </label>
                   <div className="relative">
-                    <Clipboard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                    <Clipboard className="absolute left-3 top-3 text-gray-400 h-4 w-4" />
+                    <textarea
+                      rows={4}
+                      className="w-full pl-9 pt-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-vertical"
                       value={form.description}
                       onChange={(e) =>
                         setForm({ ...form, description: e.target.value })
@@ -148,7 +227,7 @@ const Disputes = () => {
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <select
-                      className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full pl-9 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 p-2 rounded text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                       value={form.assigned_to}
                       onChange={(e) =>
                         setForm({ ...form, assigned_to: e.target.value })
@@ -194,9 +273,37 @@ const Disputes = () => {
                           <div className="font-medium text-gray-900 dark:text-white">
                             {d.description}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 mt-1">
                             Merchant: {d.merchant_id}
                           </div>
+                          {/* Responses Section */}
+                          {d.responses && d.responses.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Responses:
+                              </div>
+                              {d.responses.map((response, idx) => (
+                                <div
+                                  key={idx}
+                                  className="ml-4 p-2 bg-gray-50 dark:bg-gray-800 rounded border-l-2 border-primary"
+                                >
+                                  <div className="text-sm text-gray-700 dark:text-gray-300">
+                                    {response.response}
+                                  </div>
+                                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    By:{" "}
+                                    {response.respondedBy?.fullName ||
+                                      response.respondedBy?.username ||
+                                      "Unknown"}{" "}
+                                    •{" "}
+                                    {new Date(
+                                      response.createdAt
+                                    ).toLocaleString()}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span
@@ -205,12 +312,23 @@ const Disputes = () => {
                             {d.status}
                           </span>
                           {d.status !== "resolved" && (
-                            <button
-                              onClick={() => resolve(d._id || d.id)}
-                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-1 text-xs"
-                            >
-                              <CheckCircle className="h-3 w-3" /> Resolve
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedDispute(d);
+                                  setResponseText("");
+                                }}
+                                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-1 text-xs"
+                              >
+                                <MessageCircle className="h-3 w-3" /> Respond
+                              </button>
+                              <button
+                                onClick={() => resolve(d._id || d.id)}
+                                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-1 text-xs"
+                              >
+                                <CheckCircle className="h-3 w-3" /> Resolve
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => removeDispute(d._id || d.id)}
@@ -228,6 +346,74 @@ const Disputes = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirm Delete Modal */}
+      <Modal
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        title="Confirm Deletion"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Are you sure you want to delete this dispute? This action cannot be
+            undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={confirmRemove}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Response Modal */}
+      <Modal
+        isOpen={!!selectedDispute}
+        onClose={() => {
+          setSelectedDispute(null);
+          setResponseText("");
+        }}
+        title="Respond to Dispute"
+      >
+        <form onSubmit={handleSubmitResponse} className="space-y-4">
+          <div>
+            <label
+              htmlFor="response"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+            >
+              Your Response
+            </label>
+            <textarea
+              id="response"
+              rows={4}
+              className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50 bg-white dark:bg-gray-700"
+              value={responseText}
+              onChange={(e) => setResponseText(e.target.value)}
+              placeholder="Enter your response..."
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSelectedDispute(null);
+                setResponseText("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={submittingResponse}>
+              Submit Response
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

@@ -144,14 +144,7 @@ const Navbar = () => {
             PRICING
           </NavLink>
         </div>
-      </motion.div>
-      {isOpen && (
-        <motion.div
-          className="flexf flex-col space-y-5 bg-white items-center bg-opacity-10 backdrop-blur-md p-4 rounded-md mt-2 flex md:hidden px-16 justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
+        <div className="mt-4 flex flex-col gap-3 w-full px-8">
           <Link
             className="bg-[#f5c58a] text-white py-3 px-6 rounded-xl text-center w-full hover:bg-[#FF8C00]"
             to="/login"
@@ -160,14 +153,14 @@ const Navbar = () => {
           </Link>
           {location.pathname !== "/onboarding" && (
             <Link
-              className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center"
+              className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center w-full"
               to="/onboarding"
             >
               Start for free
             </Link>
           )}
-        </motion.div>
-      )}
+        </div>
+      </motion.div>
     </div>
   );
 };

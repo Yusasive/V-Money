@@ -1,107 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { User, Edit, Save, X } from 'lucide-react';
-import DashboardLayout from '../../components/Layout/DashboardLayout';
-import PageHeader from '../../components/UI/PageHeader';
-import Button from '../../components/UI/Button';
-import { authApi, usersApi } from '../../api/client';
-import LoadingSpinner from '../../components/UI/LoadingSpinner';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { User, Edit, Save, X } from "lucide-react";
+import DashboardLayout from "../../components/Layout/DashboardLayout";
+import PageHeader from "../../components/UI/PageHeader";
+import Button from "../../components/UI/Button";
+import { authApi, usersApi, formsApi } from "../../api/client";
+import OnboardingForm from "../../components/Navbar/OnboardingForm";
+import LoadingSpinner from "../../components/UI/LoadingSpinner";
+import toast from "react-hot-toast";
 
 const AggregatorProfile = () => {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('basic');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  
-  const [basicForm, setBasicForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    username: ''
-  });
+  const [activeTab, setActiveTab] = useState("basic");
 
-  const [onboardingForm, setOnboardingForm] = useState({
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    gender: '',
-    address: '',
-    state: '',
-    lga: '',
-    bvn: '',
-    nin: '',
-    businessName: '',
-    businessAddress: ''
+  const [basicForm, setBasicForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    username: "",
   });
+  const [onboardingForm, setOnboardingForm] = useState({});
+
+  const [mySubmission, setMySubmission] = useState(null);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+
+  const protectedFields = ["bvn", "nin", "serialNo"];
 
   useEffect(() => {
     fetchUserData();
+    fetchMySubmission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      const response = await authApi.me();
-      const userData = response.data.user;
-      setUser(userData);
-      
-      // Populate forms
+      const res = await authApi.me();
+      const u = res.data?.user || res.data;
+      setUser(u || null);
       setBasicForm({
-        fullName: userData.fullName || '',
-        email: userData.email || '',
-        phone: userData.phone || '',
-        username: userData.username || ''
+        fullName: u?.fullName || "",
+        email: u?.email || "",
+        phone: u?.phone || "",
+        username: u?.username || "",
       });
-      
-      // If user has onboarding data, populate that form too
-      if (userData.onboardingData) {
-        setOnboardingForm(userData.onboardingData);
-      }
-      
-    } catch (error) {
-      console.error('Failed to fetch user data:', error);
-      toast.error('Failed to load profile data');
+      setOnboardingForm(u?.onboardingData || {});
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to load profile");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMySubmission = async () => {
+    try {
+      const res = await formsApi.getMine();
+      const payload = res.data?.submission || res.data;
+      setMySubmission(payload || null);
+    } catch (e) {
+      setMySubmission(null);
     }
   };
 
   const handleBasicSave = async () => {
     try {
       setSaving(true);
-      await usersApi.update('me', basicForm);
-      toast.success('Profile updated successfully');
+      await usersApi.update("me", basicForm);
+      toast.success("Profile updated");
       setEditing(false);
       await fetchUserData();
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      toast.error('Failed to update profile');
+    } catch (e) {
+      console.error(e);
+      toast.error("Update failed");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleOnboardingSave = async () => {
+  const handleFilesUpload = async (files) => {
+    if (!files || !files.length) return;
     try {
-      setSaving(true);
-      await usersApi.update('me', { onboardingData: onboardingForm });
-      toast.success('Onboarding information updated successfully');
-      setEditing(false);
-      await fetchUserData();
-    } catch (error) {
-      console.error('Failed to update onboarding info:', error);
-      toast.error('Failed to update onboarding information');
+      setUploadingFiles(true);
+      const fd = new FormData();
+      fd.append("formType", "onboarding");
+      if (onboardingForm.email) fd.append("email", onboardingForm.email);
+      Array.from(files).forEach((f) => fd.append("files", f));
+      await formsApi.submit(fd);
+      toast.success("Documents uploaded");
+      await fetchMySubmission();
+    } catch (e) {
+      console.error(e);
+      toast.error("Upload failed");
     } finally {
-      setSaving(false);
+      setUploadingFiles(false);
     }
   };
-
-  const tabs = [
-    { id: 'basic', label: 'Basic Profile', icon: User },
-    { id: 'onboarding', label: 'Onboarding Info', icon: Edit },
-  ];
 
   if (loading) {
     return (
@@ -134,7 +131,9 @@ const AggregatorProfile = () => {
                     variant="success"
                     size="sm"
                     loading={saving}
-                    onClick={activeTab === 'basic' ? handleBasicSave : handleOnboardingSave}
+                    onClick={
+                      activeTab === "basic" ? handleBasicSave : undefined
+                    }
                     icon={Save}
                   >
                     Save Changes
@@ -154,35 +153,32 @@ const AggregatorProfile = () => {
           }
         />
 
-        {/* Tab Navigation */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="flex space-x-8 px-6">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === tab.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
+              {[
+                { id: "basic", label: "Basic Profile" },
+                { id: "onboarding", label: "Onboarding Info" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? "border-primary text-primary"
+                      : "border-transparent text-gray-500"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </nav>
           </div>
 
           <div className="p-6">
-            {/* Basic Profile Tab */}
-            {activeTab === 'basic' && (
+            {activeTab === "basic" && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
@@ -191,61 +187,91 @@ const AggregatorProfile = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Full Name
                     </label>
-                    <input
-                      type="text"
-                      value={basicForm.fullName}
-                      onChange={(e) => setBasicForm({ ...basicForm, fullName: e.target.value })}
-                      disabled={!editing}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
+                    {editing ? (
+                      <input
+                        value={basicForm.fullName}
+                        onChange={(e) =>
+                          setBasicForm({
+                            ...basicForm,
+                            fullName: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-700">
+                        {basicForm.fullName || "-"}
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Email Address
                     </label>
-                    <input
-                      type="email"
-                      value={basicForm.email}
-                      onChange={(e) => setBasicForm({ ...basicForm, email: e.target.value })}
-                      disabled={!editing}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
+                    {editing ? (
+                      <input
+                        type="email"
+                        value={basicForm.email}
+                        onChange={(e) =>
+                          setBasicForm({ ...basicForm, email: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-700">
+                        {basicForm.email || "-"}
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Phone Number
+                      Phone
                     </label>
-                    <input
-                      type="tel"
-                      value={basicForm.phone}
-                      onChange={(e) => setBasicForm({ ...basicForm, phone: e.target.value })}
-                      disabled={!editing}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
+                    {editing ? (
+                      <input
+                        value={basicForm.phone}
+                        onChange={(e) =>
+                          setBasicForm({ ...basicForm, phone: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-700">
+                        {basicForm.phone || "-"}
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Username
                     </label>
-                    <input
-                      type="text"
-                      value={basicForm.username}
-                      onChange={(e) => setBasicForm({ ...basicForm, username: e.target.value })}
-                      disabled={!editing}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
+                    {editing ? (
+                      <input
+                        value={basicForm.username}
+                        onChange={(e) =>
+                          setBasicForm({
+                            ...basicForm,
+                            username: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-sm text-gray-700">
+                        {basicForm.username || "-"}
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
             )}
 
-            {/* Onboarding Info Tab */}
-            {activeTab === 'onboarding' && (
+            {activeTab === "onboarding" && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
@@ -268,74 +294,117 @@ const AggregatorProfile = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        value={onboardingForm.firstName}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, firstName: e.target.value })}
-                        disabled={!editing}
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                      />
-                    </div>
+                    {editing ? (
+                      <div className="md:col-span-2">
+                        <OnboardingForm
+                          initialData={
+                            user?.onboardingData || {
+                              email: user?.email,
+                              username: user?.username,
+                            }
+                          }
+                          initialFiles={(mySubmission?.files || []).reduce(
+                            (acc, f) => {
+                              acc[f.fieldName] = f.cloudinaryUrl;
+                              return acc;
+                            },
+                            {}
+                          )}
+                          isEdit={true}
+                          protectedFields={protectedFields}
+                          onSaveText={async (textOnly) => {
+                            await usersApi.update("me", {
+                              onboardingData: textOnly,
+                            });
+                            await fetchUserData();
+                            await fetchMySubmission();
+                          }}
+                        />
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        value={onboardingForm.lastName}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, lastName: e.target.value })}
-                        disabled={!editing}
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                      />
-                    </div>
+                        <div className="mt-4">
+                          <label className="block text-sm text-gray-600 mb-2">
+                            Upload additional documents
+                          </label>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={(e) => handleFilesUpload(e.target.files)}
+                            className="block"
+                            disabled={uploadingFiles}
+                          />
+                          {uploadingFiles && (
+                            <div className="text-sm text-gray-500 mt-2">
+                              Uploading...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="md:col-span-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              First Name
+                            </label>
+                            <div className="text-sm text-gray-700">
+                              {onboardingForm.firstName || "-"}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Last Name
+                            </label>
+                            <div className="text-sm text-gray-700">
+                              {onboardingForm.lastName || "-"}
+                            </div>
+                          </div>
+                        </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Gender
-                      </label>
-                      <select
-                        value={onboardingForm.gender}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, gender: e.target.value })}
-                        disabled={!editing}
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                      >
-                        <option value="">Select gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        State
-                      </label>
-                      <input
-                        type="text"
-                        value={onboardingForm.state}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, state: e.target.value })}
-                        disabled={!editing}
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Address
-                      </label>
-                      <textarea
-                        value={onboardingForm.address}
-                        onChange={(e) => setOnboardingForm({ ...onboardingForm, address: e.target.value })}
-                        disabled={!editing}
-                        rows={3}
-                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                      />
-                    </div>
+                        <div className="mt-4">
+                          <h4 className="text-sm font-semibold mb-2">
+                            Uploaded Documents
+                          </h4>
+                          {mySubmission?.files?.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {mySubmission.files.map((file, idx) => (
+                                <div
+                                  key={idx}
+                                  className="border p-3 rounded-md"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <div className="text-xs text-gray-500">
+                                        {file.fieldName}
+                                      </div>
+                                      <div className="text-sm font-medium">
+                                        {file.originalName}
+                                      </div>
+                                    </div>
+                                    <a
+                                      href={file.cloudinaryUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-primary underline"
+                                    >
+                                      Open
+                                    </a>
+                                  </div>
+                                  <img
+                                    src={file.cloudinaryUrl}
+                                    alt={file.originalName}
+                                    className="w-full h-36 object-cover rounded-md mt-3"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500">
+                              No documents uploaded yet.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>

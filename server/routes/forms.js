@@ -6,6 +6,26 @@ const { sendStatusEmail } = require("../config/email");
 
 const router = express.Router();
 
+// Get my latest form submission
+router.get("/mine/latest", authenticateToken, async (req, res) => {
+  try {
+    const submission = await FormSubmission.findOne({
+      userId: req.user.id,
+    })
+      .sort({ createdAt: -1 })
+      .populate("reviewedBy", "fullName email");
+
+    if (!submission) {
+      return res.status(404).json({ message: "No submissions found" });
+    }
+
+    res.json(submission);
+  } catch (error) {
+    console.error("Get latest submission error:", error);
+    res.status(500).json({ message: "Failed to fetch submission" });
+  }
+});
+
 // Submit form (public endpoint)
 router.post("/submit", upload.array("files", 10), async (req, res) => {
   try {
@@ -25,6 +45,7 @@ router.post("/submit", upload.array("files", 10), async (req, res) => {
       data: formData,
       files,
       status: "pending",
+      userId: req.user?.id, // Add userId if user is authenticated
     });
 
     await submission.save();

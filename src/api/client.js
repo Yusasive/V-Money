@@ -18,12 +18,12 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
-const api = axios.create({ 
+const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    "Content-Type": "application/json",
+  },
 });
 
 // Attach token from localStorage on every request
@@ -44,9 +44,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const message = error.response?.data?.message;
+    if (status === 401) {
+      // Clear token for any 401. If token expired, redirect with a reason so UI can show a friendly message
       localStorage.removeItem("authToken");
-      window.location.href = "/login";
+      if (message === "Token expired") {
+        window.location.href = "/login?reason=expired";
+      } else {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }
@@ -96,7 +103,7 @@ export const disputesApi = {
   update: (id, data) => api.patch(`/disputes/${id}`, data),
   respond: (id, response) => api.post(`/disputes/${id}/respond`, { response }),
   close: (id) => api.patch(`/disputes/${id}/close`),
-  escalate: (id) => api.patch(`/disputes/${id}`, { status: 'escalated' }),
+  escalate: (id) => api.patch(`/disputes/${id}`, { status: "escalated" }),
   delete: (id) => api.delete(`/disputes/${id}`),
 };
 
@@ -139,6 +146,7 @@ export const formsApi = {
     }),
   list: (params = {}) => api.get("/forms", { params }),
   get: (id) => api.get(`/forms/${id}`),
+  getMine: () => api.get(`/forms/mine/latest`),
   update: (id, data) => api.patch(`/forms/${id}`, data),
   remove: (id) => api.delete(`/forms/${id}`),
 };

@@ -74,7 +74,7 @@ router.get(
     try {
       const { assigned_to, status, priority, page = 1, limit = 20 } = req.query;
 
-      const query = {};
+      const query = { deleted: false }; // Only show non-deleted tasks
       if (assigned_to) query.assignedTo = assigned_to;
       if (status) query.status = status;
       if (priority) query.priority = priority;
@@ -110,7 +110,7 @@ router.get(
 // Get tasks assigned to current user
 router.get("/assigned", authenticateToken, async (req, res) => {
   try {
-    const tasks = await Task.find({ assignedTo: req.user._id })
+    const tasks = await Task.find({ assignedTo: req.user._id, deleted: false })
       .populate("createdBy", "fullName email username")
       .populate("approvedBy", "fullName email username")
       .populate("rejectedBy", "fullName email username")
@@ -274,15 +274,76 @@ router.delete(
     try {
       const { id } = req.params;
 
-      const task = await Task.findByIdAndDelete(id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      const task = await Task.findById(id);
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
-      res.json({ message: "Task deleted successfully" });
+      // Soft-delete
+      task.deleted = true;
+      task.deletedAt = new Date();
+      task.deletedBy = req.user._id;
+      task.history.push({
+        type: "deleted",
+        actor: req.user._id,
+        note: "Soft-deleted by admin",
+      });
+      await task.save();
+
+      res.json({ message: "Task deleted (soft) successfully" });
     } catch (error) {
       console.error("Delete task error:", error);
       res.status(500).json({ message: "Failed to delete task" });
+    }
+  }
+);
+
+// Admin edit task (Staff/Admin) - whitelist editable fields
+router.patch(
+  "/:id",
+  authenticateToken,
+  requireRoles(["staff", "admin"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        title,
+        description,
+        assigned_to,
+        due_date,
+        priority,
+        notes,
+        status,
+      } = req.body;
+
+      const task = await Task.findById(id);
+      if (!task) return res.status(404).json({ message: "Task not found" });
+
+      const updates = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (assigned_to !== undefined) updates.assignedTo = assigned_to;
+      if (due_date !== undefined)
+        updates.dueDate = due_date ? new Date(due_date) : null;
+      if (priority !== undefined) updates.priority = priority;
+      if (notes !== undefined) updates.notes = notes;
+      if (status !== undefined) updates.status = status;
+
+      Object.assign(task, updates);
+      task.history.push({
+        type: "updated",
+        actor: req.user._id,
+        note: "Admin/Staff edit",
+      });
+      await task.save();
+
+      await task.populate([
+        { path: "assignedTo", select: "fullName email username" },
+        { path: "createdBy", select: "fullName email username" },
+      ]);
+
+      res.json({ message: "Task updated successfully", task });
+    } catch (error) {
+      console.error("Edit task error:", error);
+      res.status(500).json({ message: "Failed to update task" });
     }
   }
 );

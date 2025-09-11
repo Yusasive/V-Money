@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import PageHeader from "../../components/UI/PageHeader";
 import Button from "../../components/UI/Button";
+import Modal from "../../components/UI/Modal";
+import toast from "react-hot-toast";
 import { contentApi, uploadApi } from "../../api/client";
 
 const SECTIONS = [
@@ -68,22 +70,29 @@ function FieldViewComp({ field, currentDoc, labelize }) {
     if (!items.length) return null;
     return (
       <div className="space-y-2">
-        <div className="font-medium text-gray-700 capitalize">
+        <div className="font-medium text-gray-700 dark:text-gray-200 capitalize">
           {labelize(field)}
         </div>
         <div className="space-y-2">
           {items.map((item, idx) => (
-            <div key={idx} className="bg-gray-50 rounded p-3 text-sm">
+            <div
+              key={idx}
+              className="bg-gray-50 dark:bg-gray-900/40 rounded p-3 text-sm text-gray-700 dark:text-gray-200"
+            >
               {field === "features" && (
                 <>
                   <div className="font-semibold">{item.title}</div>
-                  <div className="text-gray-600">{item.description}</div>
+                  <div className="text-gray-600 dark:text-gray-300">
+                    {item.description}
+                  </div>
                 </>
               )}
               {field === "faqs" && (
                 <>
                   <div className="font-semibold">Q: {item.question}</div>
-                  <div className="text-gray-600">A: {item.answer}</div>
+                  <div className="text-gray-600 dark:text-gray-300">
+                    A: {item.answer}
+                  </div>
                 </>
               )}
               {field === "testimonials" && (
@@ -102,7 +111,9 @@ function FieldViewComp({ field, currentDoc, labelize }) {
                         {item.occupation}
                       </span>
                     </div>
-                    <div className="text-gray-600 italic">“{item.quote}”</div>
+                    <div className="text-gray-600 dark:text-gray-300 italic">
+                      “{item.quote}”
+                    </div>
                   </div>
                 </div>
               )}
@@ -111,7 +122,9 @@ function FieldViewComp({ field, currentDoc, labelize }) {
                   <div className="font-semibold">
                     {item.title} — {item.amount}
                   </div>
-                  <div className="text-gray-600">{item.description}</div>
+                  <div className="text-gray-600 dark:text-gray-300">
+                    {item.description}
+                  </div>
                 </>
               )}
             </div>
@@ -123,7 +136,9 @@ function FieldViewComp({ field, currentDoc, labelize }) {
   if (field === "imageUrl" && data.imageUrl) {
     return (
       <div className="flex items-center gap-2">
-        <span className="font-medium text-gray-700">Image:</span>
+        <span className="font-medium text-gray-700 dark:text-gray-200">
+          Image:
+        </span>
         <img
           src={data.imageUrl}
           alt="section"
@@ -135,10 +150,10 @@ function FieldViewComp({ field, currentDoc, labelize }) {
   if (data[field]) {
     return (
       <div>
-        <span className="font-medium text-gray-700 mr-2 capitalize">
+        <span className="font-medium text-gray-700 dark:text-gray-200 mr-2 capitalize">
           {labelize(field)}:
         </span>
-        <span className="text-gray-800">{data[field]}</span>
+        <span className="text-gray-800 dark:text-gray-100">{data[field]}</span>
       </div>
     );
   }
@@ -161,24 +176,27 @@ function FieldEditorComp({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-gray-700 capitalize">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 capitalize">
             {labelize(field)}
           </label>
           <button
             type="button"
             onClick={() => addArrayItem(field)}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            className="text-xs bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 hover:bg-gray-200 px-2 py-1 rounded text-gray-800 dark:text-gray-200"
           >
             + Add
           </button>
         </div>
         <div className="space-y-3">
           {items.map((item, idx) => (
-            <div key={idx} className="border rounded p-3">
+            <div
+              key={idx}
+              className="border rounded p-3 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+            >
               {field === "features" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Icon (optional)"
                     value={item.icon || ""}
                     onChange={(e) =>
@@ -186,7 +204,7 @@ function FieldEditorComp({
                     }
                   />
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Title"
                     value={item.title || ""}
                     onChange={(e) =>
@@ -194,7 +212,7 @@ function FieldEditorComp({
                     }
                   />
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Description"
                     value={item.description || ""}
                     onChange={(e) =>
@@ -211,7 +229,7 @@ function FieldEditorComp({
               {field === "faqs" && (
                 <div className="space-y-2">
                   <input
-                    className="border rounded px-3 py-2 w-full"
+                    className="border rounded px-3 py-2 w-full border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Question"
                     value={item.question || ""}
                     onChange={(e) =>
@@ -219,7 +237,7 @@ function FieldEditorComp({
                     }
                   />
                   <textarea
-                    className="border rounded px-3 py-2 w-full"
+                    className="border rounded px-3 py-2 w-full border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     rows={2}
                     placeholder="Answer"
                     value={item.answer || ""}
@@ -232,7 +250,7 @@ function FieldEditorComp({
               {field === "testimonials" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Name"
                     value={item.name || ""}
                     onChange={(e) =>
@@ -240,7 +258,7 @@ function FieldEditorComp({
                     }
                   />
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Occupation"
                     value={item.occupation || ""}
                     onChange={(e) =>
@@ -248,7 +266,7 @@ function FieldEditorComp({
                     }
                   />
                   <textarea
-                    className="border rounded px-3 py-2 md:col-span-2"
+                    className="border rounded px-3 py-2 md:col-span-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     rows={2}
                     placeholder="Quote"
                     value={item.quote || ""}
@@ -258,7 +276,7 @@ function FieldEditorComp({
                   />
                   <div className="md:col-span-2 flex gap-2">
                     <input
-                      className="border rounded px-3 py-2 flex-1"
+                      className="border rounded px-3 py-2 flex-1 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                       placeholder="Image URL"
                       value={item.imageUrl || ""}
                       onChange={(e) =>
@@ -267,7 +285,7 @@ function FieldEditorComp({
                     />
                     <button
                       type="button"
-                      className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
+                      className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
                       onClick={openImagePicker}
                     >
                       Pick
@@ -278,7 +296,7 @@ function FieldEditorComp({
               {field === "pricing" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Amount"
                     value={item.amount || ""}
                     onChange={(e) =>
@@ -286,7 +304,7 @@ function FieldEditorComp({
                     }
                   />
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Title"
                     value={item.title || ""}
                     onChange={(e) =>
@@ -294,7 +312,7 @@ function FieldEditorComp({
                     }
                   />
                   <input
-                    className="border rounded px-3 py-2"
+                    className="border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                     placeholder="Description"
                     value={item.description || ""}
                     onChange={(e) =>
@@ -327,19 +345,19 @@ function FieldEditorComp({
   if (field === "imageUrl") {
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
           Image URL
         </label>
         <div className="flex gap-2">
           <input
-            className="w-full border rounded px-3 py-2"
+            className="w-full border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
             value={currentDoc.imageUrl || ""}
             onChange={(e) => updateField("imageUrl", e.target.value)}
             placeholder="https://..."
           />
           <button
             type="button"
-            className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
+            className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
             onClick={openImagePicker}
           >
             Pick
@@ -359,11 +377,11 @@ function FieldEditorComp({
   if (["description"].includes(field)) {
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 capitalize">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 capitalize">
           {labelize(field)}
         </label>
         <textarea
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
           rows={3}
           value={currentDoc[field] || ""}
           onChange={(e) => updateField(field, e.target.value)}
@@ -374,11 +392,11 @@ function FieldEditorComp({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 capitalize">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 capitalize">
         {labelize(field)}
       </label>
       <input
-        className="w-full border rounded px-3 py-2"
+        className="w-full border rounded px-3 py-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
         value={currentDoc[field] || ""}
         onChange={(e) => updateField(field, e.target.value)}
       />
@@ -422,16 +440,16 @@ function ImagePickerModal({ open, onClose, onPick }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-lg p-4 w-full max-w-3xl relative">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 w-full max-w-3xl relative text-gray-900 dark:text-gray-100">
         <button
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+          className="absolute top-2 right-2 text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white"
           onClick={onClose}
         >
           &times;
         </button>
         <h3 className="text-xl font-semibold mb-3">Pick an image</h3>
         {error && (
-          <div className="mb-2 p-2 rounded bg-red-100 text-red-700 text-sm">
+          <div className="mb-2 p-2 rounded bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
             {error}
           </div>
         )}
@@ -440,31 +458,33 @@ function ImagePickerModal({ open, onClose, onPick }) {
             <button
               key={idx}
               onClick={() => onPick(f.url)}
-              className="group border rounded overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
+              className="group border rounded overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700"
             >
               <img
                 src={f.url}
                 alt={f.publicId}
                 className="h-28 w-full object-cover"
               />
-              <div className="p-2 text-[11px] text-gray-600 truncate group-hover:text-gray-800">
+              <div className="p-2 text-[11px] text-gray-600 dark:text-gray-300 truncate group-hover:text-gray-800 dark:group-hover:text-gray-100">
                 {f.publicId.split("/").pop()}
               </div>
             </button>
           ))}
           {!loading && files.length === 0 && (
-            <div className="col-span-full text-center text-gray-500">
+            <div className="col-span-full text-center text-gray-500 dark:text-gray-400">
               No files found in Cloudinary folder.
             </div>
           )}
         </div>
         <div className="flex justify-between items-center mt-3">
-          <span className="text-sm text-gray-500">{files.length} items</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {files.length} items
+          </span>
           <div>
             <button
               disabled={!nextCursor || loading}
               onClick={() => fetchFiles(nextCursor)}
-              className="px-3 py-1 text-sm bg-gray-100 rounded disabled:opacity-50"
+              className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 rounded disabled:opacity-50 text-gray-800 dark:text-gray-200"
             >
               {loading ? "Loading..." : nextCursor ? "Load more" : "No more"}
             </button>
@@ -559,11 +579,15 @@ const ContentManager = () => {
       setSaving(false);
     }
   };
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
 
   const handleDelete = async () => {
+    // open confirmation modal
     if (!allContent[selectedId]?._id) return;
-    if (!window.confirm("Delete this content section? This cannot be undone."))
-      return;
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
     try {
       setSaving(true);
       setMessage("");
@@ -575,10 +599,14 @@ const ContentManager = () => {
       });
       setIsEditing(false);
       setMessage("Deleted successfully");
+      toast.success("Content section deleted");
     } catch (err) {
-      setMessage(err?.response?.data?.message || "Failed to delete content");
+      const msg = err?.response?.data?.message || "Failed to delete content";
+      setMessage(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -602,7 +630,9 @@ const ContentManager = () => {
       />
 
       {errorAll && (
-        <div className="p-3 rounded bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">{errorAll}</div>
+        <div className="p-3 rounded bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+          {errorAll}
+        </div>
       )}
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -639,7 +669,9 @@ const ContentManager = () => {
           {/* Right content */}
           <section className="col-span-12 md:col-span-9 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-white">{currentSection.name}</h3>
+              <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-white">
+                {currentSection.name}
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {!isEditing ? (
                   <div className="flex gap-2">
@@ -724,7 +756,9 @@ const ContentManager = () => {
       </div>
 
       {loadingAll && (
-        <div className="text-center text-gray-600 dark:text-gray-400">Loading...</div>
+        <div className="text-center text-gray-600 dark:text-gray-400">
+          Loading...
+        </div>
       )}
 
       {/* Image Picker */}
@@ -740,6 +774,33 @@ const ContentManager = () => {
           }
         }}
       />
+
+      <Modal
+        isOpen={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        title="Confirm Delete"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Delete this content section? This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              className="px-3 py-2 rounded-md border"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-3 py-2 rounded-md bg-red-600 text-white"
+              onClick={confirmDelete}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
     </motion.div>
   );
 };

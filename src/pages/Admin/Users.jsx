@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usersApi } from "../../api/client";
 import RequireRole from "../../components/Auth/RequireRole";
+import toast from "react-hot-toast";
+import Modal from "../../components/UI/Modal";
 
 const statusBadgeClass = (status) => {
   switch (status) {
@@ -73,8 +75,8 @@ const Users = () => {
   };
 
   const confirmReason = (label) => {
-    const reason = window.prompt(label + " (optional):");
-    return reason || "";
+    // This function no longer uses blocking prompt. Use modal flow instead.
+    return "";
   };
 
   const doAction = async (id, action) => {
@@ -83,24 +85,37 @@ const Users = () => {
       if (action === "approve") await usersApi.approve(id);
       if (action === "activate") await usersApi.activate(id);
       if (action === "reject") {
-        const reason = confirmReason("Enter rejection reason");
-        await usersApi.reject(id, reason);
+        // open reason modal for reject
+        setPendingReason({
+          id,
+          action: "reject",
+          label: "Enter rejection reason (optional):",
+        });
+        return;
       }
       if (action === "suspend") {
-        const reason = confirmReason("Enter suspension reason");
-        await usersApi.suspend(id, reason);
+        setPendingReason({
+          id,
+          action: "suspend",
+          label: "Enter suspension reason (optional):",
+        });
+        return;
       }
       if (action === "delete") {
-        if (!window.confirm("Delete this user? This cannot be undone.")) return;
+        // deletion uses confirmation modal handled elsewhere
         await usersApi.delete(id);
       }
       await fetchUsers(pagination.page);
     } catch (e) {
-      alert(e.response?.data?.message || "Action failed");
+      toast.error(e.response?.data?.message || "Action failed");
     } finally {
       setLoading(false);
     }
   };
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [pendingReason, setPendingReason] = useState(null);
+  const [reasonInput, setReasonInput] = useState("");
 
   const roles = useMemo(
     () => ["", "aggregator", "staff", "merchant", "admin"],
@@ -213,51 +228,51 @@ const Users = () => {
                     </td>
                     <td className="px-3 lg:px-4 py-3 text-xs lg:text-sm text-right">
                       <div className="flex flex-col lg:flex-row gap-1 lg:gap-2 lg:justify-end">
-                      {u.status !== "approved" && (
-                        <button
-                          onClick={() => doAction(u._id, "approve")}
-                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 text-xs"
-                          disabled={loading}
-                        >
-                          Approve
-                        </button>
-                      )}
-                      {u.role !== "admin" && u.status !== "rejected" && (
-                        <button
-                          onClick={() => doAction(u._id, "reject")}
-                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 text-xs"
-                          disabled={loading}
-                        >
-                          Reject
-                        </button>
-                      )}
-                      {u.role !== "admin" && u.status !== "suspended" && (
-                        <button
-                          onClick={() => doAction(u._id, "suspend")}
-                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-gray-600 text-white hover:bg-gray-700 text-xs"
-                          disabled={loading}
-                        >
-                          Suspend
-                        </button>
-                      )}
-                      {u.status !== "approved" && (
-                        <button
-                          onClick={() => doAction(u._id, "activate")}
-                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-xs"
-                          disabled={loading}
-                        >
-                          Activate
-                        </button>
-                      )}
-                      {u.role !== "admin" && (
-                        <button
-                          onClick={() => doAction(u._id, "delete")}
-                          className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 text-xs"
-                          disabled={loading}
-                        >
-                          Delete
-                        </button>
-                      )}
+                        {u.status !== "approved" && (
+                          <button
+                            onClick={() => doAction(u._id, "approve")}
+                            className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 text-xs"
+                            disabled={loading}
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {u.role !== "admin" && u.status !== "rejected" && (
+                          <button
+                            onClick={() => doAction(u._id, "reject")}
+                            className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 text-xs"
+                            disabled={loading}
+                          >
+                            Reject
+                          </button>
+                        )}
+                        {u.role !== "admin" && u.status !== "suspended" && (
+                          <button
+                            onClick={() => doAction(u._id, "suspend")}
+                            className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-gray-600 text-white hover:bg-gray-700 text-xs"
+                            disabled={loading}
+                          >
+                            Suspend
+                          </button>
+                        )}
+                        {u.status !== "approved" && (
+                          <button
+                            onClick={() => doAction(u._id, "activate")}
+                            className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-xs"
+                            disabled={loading}
+                          >
+                            Activate
+                          </button>
+                        )}
+                        {u.role !== "admin" && (
+                          <button
+                            onClick={() => setConfirmDeleteId(u._id)}
+                            className="px-2 lg:px-3 py-1 lg:py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 text-xs"
+                            disabled={loading}
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -294,6 +309,87 @@ const Users = () => {
 
         {loading && <div className="text-sm text-gray-500">Processing...</div>}
         {error && <div className="text-sm text-red-600">{error}</div>}
+        <Modal
+          isOpen={!!confirmDeleteId}
+          onClose={() => setConfirmDeleteId(null)}
+          title="Confirm Delete"
+          size="md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Delete this user? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-2 rounded-md border"
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-2 rounded-md bg-red-600 text-white"
+                onClick={async () => {
+                  await doAction(confirmDeleteId, "delete");
+                  setConfirmDeleteId(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Modal>
+        <Modal
+          isOpen={!!pendingReason}
+          onClose={() => {
+            setPendingReason(null);
+            setReasonInput("");
+          }}
+          title={pendingReason?.label || "Reason"}
+          size="md"
+        >
+          <div className="space-y-4">
+            <textarea
+              value={reasonInput}
+              onChange={(e) => setReasonInput(e.target.value)}
+              placeholder="Optional reason"
+              className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-2 rounded-md border"
+                onClick={() => {
+                  setPendingReason(null);
+                  setReasonInput("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-2 rounded-md bg-primary text-white"
+                onClick={async () => {
+                  const { id, action } = pendingReason;
+                  try {
+                    setLoading(true);
+                    if (action === "reject")
+                      await usersApi.reject(id, reasonInput || "");
+                    if (action === "suspend")
+                      await usersApi.suspend(id, reasonInput || "");
+                    toast.success("Action completed");
+                    await fetchUsers(pagination.page);
+                  } catch (e) {
+                    toast.error(e.response?.data?.message || "Action failed");
+                  } finally {
+                    setLoading(false);
+                    setPendingReason(null);
+                    setReasonInput("");
+                  }
+                }}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </RequireRole>
   );

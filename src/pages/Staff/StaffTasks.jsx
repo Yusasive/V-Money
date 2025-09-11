@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { CheckSquare, Plus, User, Calendar, Clock, CheckCircle, X } from 'lucide-react';
-import DashboardLayout from '../../components/Layout/DashboardLayout';
-import PageHeader from '../../components/UI/PageHeader';
-import Button from '../../components/UI/Button';
-import Badge from '../../components/UI/Badge';
-import Modal from '../../components/UI/Modal';
-import { tasksApi, usersApi } from '../../api/client';
-import LoadingSpinner from '../../components/UI/LoadingSpinner';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  CheckSquare,
+  Plus,
+  User,
+  Calendar,
+  Clock,
+  CheckCircle,
+  X,
+} from "lucide-react";
+import DashboardLayout from "../../components/Layout/DashboardLayout";
+import PageHeader from "../../components/UI/PageHeader";
+import Button from "../../components/UI/Button";
+import Badge from "../../components/UI/Badge";
+import Modal from "../../components/UI/Modal";
+import { tasksApi, usersApi, authApi } from "../../api/client";
+import LoadingSpinner from "../../components/UI/LoadingSpinner";
+import toast from "react-hot-toast";
 
 const StaffTasks = () => {
   const [tasks, setTasks] = useState([]);
@@ -16,20 +24,30 @@ const StaffTasks = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState("all");
   const [submitting, setSubmitting] = useState(false);
 
   const [taskForm, setTaskForm] = useState({
-    title: '',
-    description: '',
-    assigned_to: '',
-    due_date: '',
-    priority: 'medium'
+    title: "",
+    description: "",
+    assigned_to: "",
+    due_date: "",
+    priority: "medium",
   });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   useEffect(() => {
     fetchTasks();
     fetchUsers();
+    (async () => {
+      try {
+        const res = await authApi.me();
+        setCurrentUser(res.data.user);
+      } catch (e) {}
+    })();
   }, []);
 
   const fetchTasks = async () => {
@@ -38,8 +56,8 @@ const StaffTasks = () => {
       const response = await tasksApi.list();
       setTasks(response.data.tasks || []);
     } catch (error) {
-      console.error('Failed to fetch tasks:', error);
-      toast.error('Failed to load tasks');
+      console.error("Failed to fetch tasks:", error);
+      toast.error("Failed to load tasks");
     } finally {
       setLoading(false);
     }
@@ -47,17 +65,17 @@ const StaffTasks = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await usersApi.list({ 
-        status: 'approved', 
-        limit: 100 
+      const response = await usersApi.list({
+        status: "approved",
+        limit: 100,
       });
       const allUsers = response.data.users || [];
-      const eligibleUsers = allUsers.filter(u => 
-        ['aggregator', 'staff'].includes(u.role)
+      const eligibleUsers = allUsers.filter((u) =>
+        ["aggregator", "staff"].includes(u.role)
       );
       setUsers(eligibleUsers);
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error("Failed to fetch users:", error);
     }
   };
 
@@ -66,19 +84,19 @@ const StaffTasks = () => {
     try {
       setSubmitting(true);
       await tasksApi.create(taskForm);
-      toast.success('Task created successfully');
+      toast.success("Task created successfully");
       setShowCreateModal(false);
       setTaskForm({
-        title: '',
-        description: '',
-        assigned_to: '',
-        due_date: '',
-        priority: 'medium'
+        title: "",
+        description: "",
+        assigned_to: "",
+        due_date: "",
+        priority: "medium",
       });
       await fetchTasks();
     } catch (error) {
-      console.error('Failed to create task:', error);
-      toast.error('Failed to create task');
+      console.error("Failed to create task:", error);
+      toast.error("Failed to create task");
     } finally {
       setSubmitting(false);
     }
@@ -87,41 +105,99 @@ const StaffTasks = () => {
   const handleApproveTask = async (taskId) => {
     try {
       await tasksApi.approve(taskId);
-      toast.success('Task approved successfully');
+      toast.success("Task approved successfully");
       await fetchTasks();
     } catch (error) {
-      console.error('Failed to approve task:', error);
-      toast.error('Failed to approve task');
+      console.error("Failed to approve task:", error);
+      toast.error("Failed to approve task");
     }
   };
 
   const handleRejectTask = async (taskId) => {
-    const reason = window.prompt('Enter rejection reason (optional):');
+    setPendingReject({ id: taskId });
+  };
+
+  const [pendingReject, setPendingReject] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const submitReject = async () => {
+    if (!pendingReject) return;
     try {
-      await tasksApi.reject(taskId, reason || '');
-      toast.success('Task rejected');
+      await tasksApi.reject(pendingReject.id, rejectReason || "");
+      toast.success("Task rejected");
       await fetchTasks();
     } catch (error) {
-      console.error('Failed to reject task:', error);
-      toast.error('Failed to reject task');
+      console.error("Failed to reject task:", error);
+      toast.error("Failed to reject task");
+    } finally {
+      setPendingReject(null);
+      setRejectReason("");
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'all') return true;
+  const filteredTasks = tasks.filter((task) => {
+    if (filter === "all") return true;
     return task.status === filter;
   });
 
+  const openEdit = (task) => {
+    setEditingTask(task);
+    setShowEditModal(true);
+  };
+
+  const submitEdit = async () => {
+    if (!editingTask) return;
+    try {
+      setSubmitting(true);
+      await tasksApi.update(editingTask._id, {
+        title: editingTask.title,
+        description: editingTask.description,
+        assigned_to: editingTask.assignedTo?._id || editingTask.assignedTo,
+        due_date: editingTask.dueDate,
+        priority: editingTask.priority,
+        notes: editingTask.notes,
+      });
+      toast.success("Task updated");
+      setShowEditModal(false);
+      setEditingTask(null);
+      await fetchTasks();
+    } catch (err) {
+      console.error("Failed to update task", err);
+      toast.error("Failed to update task");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const confirmDelete = (task) => {
+    setEditingTask(task);
+    setShowDeleteConfirm(true);
+  };
+
+  const doDelete = async () => {
+    if (!editingTask) return;
+    try {
+      await tasksApi.delete(editingTask._id);
+      toast.success("Task deleted");
+      setShowDeleteConfirm(false);
+      setEditingTask(null);
+      await fetchTasks();
+    } catch (err) {
+      console.error("Failed to delete task", err);
+      toast.error("Failed to delete task");
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusMap = {
-      pending: { variant: 'pending', label: 'Pending' },
-      in_progress: { variant: 'primary', label: 'In Progress' },
-      done: { variant: 'warning', label: 'Done (Awaiting Approval)' },
-      completed: { variant: 'success', label: 'Completed' },
-      rejected: { variant: 'danger', label: 'Rejected' },
+      pending: { variant: "pending", label: "Pending" },
+      in_progress: { variant: "primary", label: "In Progress" },
+      done: { variant: "warning", label: "Done (Awaiting Approval)" },
+      completed: { variant: "success", label: "Completed" },
+      rejected: { variant: "danger", label: "Rejected" },
     };
-    
-    const config = statusMap[status] || { variant: 'default', label: status };
+
+    const config = statusMap[status] || { variant: "default", label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -155,20 +231,20 @@ const StaffTasks = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex flex-wrap gap-2">
             {[
-              { key: 'all', label: 'All Tasks' },
-              { key: 'pending', label: 'Pending' },
-              { key: 'in_progress', label: 'In Progress' },
-              { key: 'done', label: 'Awaiting Approval' },
-              { key: 'completed', label: 'Completed' },
-              { key: 'rejected', label: 'Rejected' },
+              { key: "all", label: "All Tasks" },
+              { key: "pending", label: "Pending" },
+              { key: "in_progress", label: "In Progress" },
+              { key: "done", label: "Awaiting Approval" },
+              { key: "completed", label: "Completed" },
+              { key: "rejected", label: "Rejected" },
             ].map((filterOption) => (
               <button
                 key={filterOption.key}
                 onClick={() => setFilter(filterOption.key)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filter === filterOption.key
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    ? "bg-primary text-white"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                 }`}
               >
                 {filterOption.label}
@@ -184,7 +260,7 @@ const StaffTasks = () => {
               Tasks ({filteredTasks.length})
             </h3>
           </div>
-          
+
           <div className="p-6">
             {filteredTasks.length === 0 ? (
               <div className="text-center py-12">
@@ -193,10 +269,9 @@ const StaffTasks = () => {
                   No tasks found
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {filter === 'all' 
-                    ? 'Create your first task to get started.'
-                    : `No tasks with status "${filter}".`
-                  }
+                  {filter === "all"
+                    ? "Create your first task to get started."
+                    : `No tasks with status "${filter}".`}
                 </p>
               </div>
             ) : (
@@ -227,7 +302,10 @@ const StaffTasks = () => {
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4" />
-                            Assigned to: {task.assignedTo?.fullName || task.assignedTo?.username || 'Unknown'}
+                            Assigned to:{" "}
+                            {task.assignedTo?.fullName ||
+                              task.assignedTo?.username ||
+                              "Unknown"}
                           </div>
 
                           {task.dueDate && (
@@ -239,15 +317,21 @@ const StaffTasks = () => {
 
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            Created: {new Date(task.createdAt).toLocaleDateString()}
+                            Created:{" "}
+                            {new Date(task.createdAt).toLocaleDateString()}
                           </div>
 
                           <div className="flex items-center gap-1">
-                            Priority: <span className={`px-2 py-1 text-xs rounded-full ${
-                              task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                              task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
+                            Priority:{" "}
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                task.priority === "high"
+                                  ? "bg-red-100 text-red-800"
+                                  : task.priority === "medium"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-green-100 text-green-800"
+                              }`}
+                            >
                               {task.priority}
                             </span>
                           </div>
@@ -263,7 +347,27 @@ const StaffTasks = () => {
                           View Details
                         </Button>
 
-                        {task.status === 'done' && (
+                        {/* Admin-only edit/delete */}
+                        {currentUser?.role === "admin" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEdit(task)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => confirmDelete(task)}
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        )}
+
+                        {task.status === "done" && (
                           <>
                             <Button
                               variant="success"
@@ -307,7 +411,9 @@ const StaffTasks = () => {
               <input
                 type="text"
                 value={taskForm.title}
-                onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                onChange={(e) =>
+                  setTaskForm({ ...taskForm, title: e.target.value })
+                }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Enter task title"
                 required
@@ -320,7 +426,9 @@ const StaffTasks = () => {
               </label>
               <textarea
                 value={taskForm.description}
-                onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                onChange={(e) =>
+                  setTaskForm({ ...taskForm, description: e.target.value })
+                }
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Enter task description"
@@ -334,7 +442,9 @@ const StaffTasks = () => {
                 </label>
                 <select
                   value={taskForm.assigned_to}
-                  onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, assigned_to: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   required
                 >
@@ -353,7 +463,9 @@ const StaffTasks = () => {
                 </label>
                 <select
                   value={taskForm.priority}
-                  onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
+                  onChange={(e) =>
+                    setTaskForm({ ...taskForm, priority: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="low">Low</option>
@@ -370,7 +482,9 @@ const StaffTasks = () => {
               <input
                 type="date"
                 value={taskForm.due_date}
-                onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                onChange={(e) =>
+                  setTaskForm({ ...taskForm, due_date: e.target.value })
+                }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
@@ -383,15 +497,144 @@ const StaffTasks = () => {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                loading={submitting}
-                icon={Plus}
-              >
+              <Button type="submit" loading={submitting} icon={Plus}>
                 Create Task
               </Button>
             </div>
           </form>
+        </Modal>
+        {/* Edit Task Modal */}
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingTask(null);
+          }}
+          title="Edit Task"
+          size="lg"
+        >
+          {editingTask && (
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitEdit();
+              }}
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title
+                </label>
+                <input
+                  value={editingTask.title}
+                  onChange={(e) =>
+                    setEditingTask({ ...editingTask, title: e.target.value })
+                  }
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={editingTask.description || ""}
+                  onChange={(e) =>
+                    setEditingTask({
+                      ...editingTask,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign To
+                  </label>
+                  <select
+                    value={
+                      editingTask.assignedTo?._id || editingTask.assignedTo
+                    }
+                    onChange={(e) =>
+                      setEditingTask({
+                        ...editingTask,
+                        assignedTo: { _id: e.target.value },
+                      })
+                    }
+                    className="w-full"
+                  >
+                    <option value="">Unassigned</option>
+                    {users.map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.fullName} ({u.username})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={editingTask.priority}
+                    onChange={(e) =>
+                      setEditingTask({
+                        ...editingTask,
+                        priority: e.target.value,
+                      })
+                    }
+                    className="w-full"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingTask(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button loading={submitting} onClick={submitEdit}>
+                  Save
+                </Button>
+              </div>
+            </form>
+          )}
+        </Modal>
+
+        {/* Delete Confirm Modal */}
+        <Modal
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          title="Confirm Delete"
+          size="md"
+        >
+          <div>
+            <p>
+              Are you sure you want to delete this task? This will be a
+              soft-delete.
+            </p>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={doDelete}>
+                Delete
+              </Button>
+            </div>
+          </div>
         </Modal>
 
         {/* Task Detail Modal */}
@@ -424,7 +667,9 @@ const StaffTasks = () => {
                     Assigned To
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {selectedTask.assignedTo?.fullName || selectedTask.assignedTo?.username || 'Unknown'}
+                    {selectedTask.assignedTo?.fullName ||
+                      selectedTask.assignedTo?.username ||
+                      "Unknown"}
                   </p>
                 </div>
 
@@ -432,11 +677,15 @@ const StaffTasks = () => {
                   <h5 className="font-medium text-gray-900 dark:text-white mb-1">
                     Priority
                   </h5>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    selectedTask.priority === 'high' ? 'bg-red-100 text-red-800' :
-                    selectedTask.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      selectedTask.priority === "high"
+                        ? "bg-red-100 text-red-800"
+                        : selectedTask.priority === "medium"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-green-100 text-green-800"
+                    }`}
+                  >
                     {selectedTask.priority}
                   </span>
                 </div>
@@ -478,7 +727,9 @@ const StaffTasks = () => {
                       Approved By
                     </h5>
                     <p className="text-gray-600 dark:text-gray-400">
-                      {selectedTask.approvedBy?.fullName || selectedTask.approvedBy?.username || 'Unknown'}
+                      {selectedTask.approvedBy?.fullName ||
+                        selectedTask.approvedBy?.username ||
+                        "Unknown"}
                     </p>
                   </div>
                 )}
@@ -496,14 +747,11 @@ const StaffTasks = () => {
               )}
 
               <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedTask(null)}
-                >
+                <Button variant="outline" onClick={() => setSelectedTask(null)}>
                   Close
                 </Button>
 
-                {selectedTask.status === 'done' && (
+                {selectedTask.status === "done" && (
                   <>
                     <Button
                       variant="success"
@@ -530,6 +778,44 @@ const StaffTasks = () => {
               </div>
             </div>
           )}
+        </Modal>
+        <Modal
+          isOpen={!!pendingReject}
+          onClose={() => {
+            setPendingReject(null);
+            setRejectReason("");
+          }}
+          title="Reject Task"
+          size="md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Enter rejection reason (optional):
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Optional reason"
+              className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-2 rounded-md border"
+                onClick={() => {
+                  setPendingReject(null);
+                  setRejectReason("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-2 rounded-md bg-primary text-white"
+                onClick={submitReject}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
         </Modal>
       </div>
     </DashboardLayout>

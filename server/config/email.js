@@ -1,4 +1,15 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
+
+// Prefer IPv4 address resolution where available to avoid ENETUNREACH when system
+// has no IPv6 connectivity but DNS returns IPv6 records.
+try {
+  if (typeof dns.setDefaultResultOrder === "function") {
+    dns.setDefaultResultOrder("ipv4first");
+  }
+} catch (e) {
+  // ignore if not supported on this Node version
+}
 
 function createTransporter() {
   if (process.env.MAIL_SERVICE) {

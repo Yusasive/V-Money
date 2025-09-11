@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   CheckSquare,
@@ -13,11 +14,12 @@ import PageHeader from "../../components/UI/PageHeader";
 import StatsCard from "../../components/UI/StatsCard";
 import Button from "../../components/UI/Button";
 import Badge from "../../components/UI/Badge";
-import { tasksApi, disputesApi } from "../../api/client";
+import { tasksApi, disputesApi, authApi, formsApi } from "../../api/client";
 import LoadingSpinner from "../../components/UI/LoadingSpinner";
 import toast from "react-hot-toast";
 
 const AggregatorDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     tasksAssigned: 0,
     tasksCompleted: 0,
@@ -28,9 +30,12 @@ const AggregatorDashboard = () => {
   const [recentDisputes, setRecentDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingDone, setMarkingDone] = useState(null);
+  const [me, setMe] = useState(null);
+  const [mySubmission, setMySubmission] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
+    fetchMe();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -70,6 +75,21 @@ const AggregatorDashboard = () => {
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMe = async () => {
+    try {
+      const res = await authApi.me();
+      setMe(res.data.user || res.data);
+      try {
+        const subRes = await formsApi.getMine();
+        setMySubmission(subRes.data.submission || subRes.data);
+      } catch (e) {
+        setMySubmission(null);
+      }
+    } catch (error) {
+      console.error("Failed to load user for dashboard", error);
     }
   };
 
@@ -142,6 +162,134 @@ const AggregatorDashboard = () => {
         </div>
 
         {/* Recent Activity */}
+        {/* Onboarding Status Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Onboarding
+            </h3>
+            {(() => {
+              const submission = mySubmission;
+              const status = submission?.status; // pending | reviewed | approved | rejected
+              const hasSubmission = Boolean(submission);
+
+              const go = (prefill = {}) =>
+                navigate("/onboarding", {
+                  state: {
+                    initialData: {
+                      email: me?.email,
+                      username: me?.username,
+                      ...(prefill || {}),
+                    },
+                  },
+                });
+
+              // No submission at all -> can only start
+              if (!hasSubmission) {
+                return (
+                  <div className="py-6">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      You haven't submitted onboarding yet.
+                    </p>
+                    <Button variant="primary" onClick={() => go()}>
+                      Start Onboarding
+                    </Button>
+                  </div>
+                );
+              }
+
+              // Rejected -> allow resubmit with prefill
+              if (status === "rejected") {
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Status:
+                      </span>
+                      <Badge variant="danger">Rejected</Badge>
+                    </div>
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      Your onboarding was rejected. Please correct and resubmit.
+                    </p>
+                    <Button
+                      variant="primary"
+                      onClick={() =>
+                        go(
+                          Object.fromEntries(
+                            Object.entries(submission.data || {}).filter(
+                              ([, v]) => typeof v === "string"
+                            )
+                          )
+                        )
+                      }
+                    >
+                      Resubmit Onboarding
+                    </Button>
+                  </div>
+                );
+              }
+
+              // Pending / Reviewed / Approved -> show status only; no editing from here
+              const badgeVariant =
+                status === "approved"
+                  ? "success"
+                  : status === "pending"
+                    ? "warning"
+                    : status === "reviewed"
+                      ? "default"
+                      : "default";
+
+              const statusTextMap = {
+                pending: "Pending review. You'll be notified soon.",
+                reviewed: "Reviewed. Awaiting final approval.",
+                approved: "Approved. Access granted.",
+              };
+
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Status:
+                    </span>
+                    <Badge variant={badgeVariant}>{status}</Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {statusTextMap[status] || "Status updated."}
+                  </p>
+                  {submission?.files?.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">
+                        Uploaded documents
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {submission.files.map((f, i) => (
+                          <a
+                            key={i}
+                            href={f.cloudinaryUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <img
+                              src={f.cloudinaryUrl}
+                              alt={f.originalName}
+                              className="h-24 w-24 object-cover rounded-md"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </motion.div>
+          {/* keep the Recent Tasks and Recent Disputes columns after this */}
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Recent Tasks */}
           <motion.div

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import {
   FiEdit,
   FiLock,
@@ -862,8 +863,9 @@ export default function MerchantProfileTabs({
             </p>
             <button
               onClick={() => {
-                alert(
-                  "To re-enable images:\n1. Fix the Cloudinary upload issue\n2. Update the DocumentCard component\n3. Set shouldShowImage = true"
+                toast(
+                  "To re-enable images:\n1. Fix the Cloudinary upload issue\n2. Update the DocumentCard component\n3. Set shouldShowImage = true",
+                  { duration: 8000 }
                 );
               }}
               className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
@@ -1001,15 +1003,13 @@ export default function MerchantProfileTabs({
                         );
                         const data = await response.json();
                         console.log("Cloudinary Resources:", data);
-                        alert(
-                          `Found ${data.totalCount} files on Cloudinary. Check console for details.`
-                        );
+                        toast.success(`Found ${data.totalCount} files on Cloudinary. Check console for details.`);
                       } catch (error) {
                         console.error(
                           "Failed to fetch Cloudinary resources:",
                           error
                         );
-                        alert("Failed to check Cloudinary resources");
+                        toast.error("Failed to check Cloudinary resources");
                       }
                     }}
                     className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"

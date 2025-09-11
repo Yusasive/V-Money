@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { AlertTriangle, Plus, User, MessageSquare, Clock } from 'lucide-react';
-import DashboardLayout from '../../components/Layout/DashboardLayout';
-import PageHeader from '../../components/UI/PageHeader';
-import Button from '../../components/UI/Button';
-import Badge from '../../components/UI/Badge';
-import Modal from '../../components/UI/Modal';
-import { disputesApi, usersApi } from '../../api/client';
-import LoadingSpinner from '../../components/UI/LoadingSpinner';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { AlertTriangle, Plus, User, MessageSquare, Clock } from "lucide-react";
+import DashboardLayout from "../../components/Layout/DashboardLayout";
+import PageHeader from "../../components/UI/PageHeader";
+import Button from "../../components/UI/Button";
+import Badge from "../../components/UI/Badge";
+import Modal from "../../components/UI/Modal";
+import { disputesApi, usersApi, authApi } from "../../api/client";
+import LoadingSpinner from "../../components/UI/LoadingSpinner";
+import toast from "react-hot-toast";
 
 const StaffDisputes = () => {
   const [disputes, setDisputes] = useState([]);
@@ -16,19 +16,29 @@ const StaffDisputes = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState("all");
   const [submitting, setSubmitting] = useState(false);
 
   const [disputeForm, setDisputeForm] = useState({
-    title: '',
-    description: '',
-    raised_against: '',
-    priority: 'medium'
+    title: "",
+    description: "",
+    raised_against: "",
+    priority: "medium",
   });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingDispute, setEditingDispute] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     fetchDisputes();
     fetchUsers();
+    (async () => {
+      try {
+        const res = await authApi.me();
+        setCurrentUser(res.data.user);
+      } catch (e) {}
+    })();
   }, []);
 
   const fetchDisputes = async () => {
@@ -37,8 +47,8 @@ const StaffDisputes = () => {
       const response = await disputesApi.list();
       setDisputes(response.data.disputes || []);
     } catch (error) {
-      console.error('Failed to fetch disputes:', error);
-      toast.error('Failed to load disputes');
+      console.error("Failed to fetch disputes:", error);
+      toast.error("Failed to load disputes");
     } finally {
       setLoading(false);
     }
@@ -46,15 +56,15 @@ const StaffDisputes = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await usersApi.list({ 
-        status: 'approved', 
-        limit: 100 
+      const response = await usersApi.list({
+        status: "approved",
+        limit: 100,
       });
       const allUsers = response.data.users || [];
-      const aggregators = allUsers.filter(u => u.role === 'aggregator');
+      const aggregators = allUsers.filter((u) => u.role === "aggregator");
       setUsers(aggregators);
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error("Failed to fetch users:", error);
     }
   };
 
@@ -63,18 +73,18 @@ const StaffDisputes = () => {
     try {
       setSubmitting(true);
       await disputesApi.create(disputeForm);
-      toast.success('Dispute created successfully');
+      toast.success("Dispute created successfully");
       setShowCreateModal(false);
       setDisputeForm({
-        title: '',
-        description: '',
-        raised_against: '',
-        priority: 'medium'
+        title: "",
+        description: "",
+        raised_against: "",
+        priority: "medium",
       });
       await fetchDisputes();
     } catch (error) {
-      console.error('Failed to create dispute:', error);
-      toast.error('Failed to create dispute');
+      console.error("Failed to create dispute:", error);
+      toast.error("Failed to create dispute");
     } finally {
       setSubmitting(false);
     }
@@ -83,28 +93,73 @@ const StaffDisputes = () => {
   const handleCloseDispute = async (disputeId) => {
     try {
       await disputesApi.close(disputeId);
-      toast.success('Dispute closed successfully');
+      toast.success("Dispute closed successfully");
       await fetchDisputes();
     } catch (error) {
-      console.error('Failed to close dispute:', error);
-      toast.error('Failed to close dispute');
+      console.error("Failed to close dispute:", error);
+      toast.error("Failed to close dispute");
     }
   };
 
-  const filteredDisputes = disputes.filter(dispute => {
-    if (filter === 'all') return true;
+  const filteredDisputes = disputes.filter((dispute) => {
+    if (filter === "all") return true;
     return dispute.status === filter;
   });
 
+  const openEdit = (d) => {
+    setEditingDispute(d);
+    setShowEditModal(true);
+  };
+
+  const submitEdit = async () => {
+    if (!editingDispute) return;
+    try {
+      setSubmitting(true);
+      await disputesApi.update(editingDispute._id, {
+        title: editingDispute.title,
+        description: editingDispute.description,
+        priority: editingDispute.priority,
+        status: editingDispute.status,
+      });
+      toast.success("Dispute updated");
+      setShowEditModal(false);
+      setEditingDispute(null);
+      await fetchDisputes();
+    } catch (err) {
+      console.error("Failed to update dispute", err);
+      toast.error("Failed to update dispute");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const confirmDelete = (d) => {
+    setEditingDispute(d);
+    setShowDeleteConfirm(true);
+  };
+  const doDelete = async () => {
+    if (!editingDispute) return;
+    try {
+      await disputesApi.delete(editingDispute._id);
+      toast.success("Dispute deleted");
+      setShowDeleteConfirm(false);
+      setEditingDispute(null);
+      await fetchDisputes();
+    } catch (err) {
+      console.error("Failed to delete dispute", err);
+      toast.error("Failed to delete dispute");
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusMap = {
-      open: { variant: 'danger', label: 'Open' },
-      in_review: { variant: 'warning', label: 'In Review' },
-      resolved: { variant: 'success', label: 'Resolved' },
-      escalated: { variant: 'danger', label: 'Escalated' },
+      open: { variant: "danger", label: "Open" },
+      in_review: { variant: "warning", label: "In Review" },
+      resolved: { variant: "success", label: "Resolved" },
+      escalated: { variant: "danger", label: "Escalated" },
     };
 
-    const config = statusMap[status] || { variant: 'default', label: status };
+    const config = statusMap[status] || { variant: "default", label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -138,19 +193,19 @@ const StaffDisputes = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex flex-wrap gap-2">
             {[
-              { key: 'all', label: 'All Disputes' },
-              { key: 'open', label: 'Open' },
-              { key: 'in_review', label: 'In Review' },
-              { key: 'resolved', label: 'Resolved' },
-              { key: 'escalated', label: 'Escalated' },
+              { key: "all", label: "All Disputes" },
+              { key: "open", label: "Open" },
+              { key: "in_review", label: "In Review" },
+              { key: "resolved", label: "Resolved" },
+              { key: "escalated", label: "Escalated" },
             ].map((filterOption) => (
               <button
                 key={filterOption.key}
                 onClick={() => setFilter(filterOption.key)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   filter === filterOption.key
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    ? "bg-primary text-white"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                 }`}
               >
                 {filterOption.label}
@@ -175,10 +230,9 @@ const StaffDisputes = () => {
                   No disputes found
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {filter === 'all' 
-                    ? 'No disputes have been raised yet.'
-                    : `No disputes with status "${filter}".`
-                  }
+                  {filter === "all"
+                    ? "No disputes have been raised yet."
+                    : `No disputes with status "${filter}".`}
                 </p>
               </div>
             ) : (
@@ -207,12 +261,16 @@ const StaffDisputes = () => {
                         <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <User className="h-4 w-4" />
-                            Against: {dispute.raisedAgainst?.fullName || dispute.raisedAgainst?.username || 'Unknown'}
+                            Against:{" "}
+                            {dispute.raisedAgainst?.fullName ||
+                              dispute.raisedAgainst?.username ||
+                              "Unknown"}
                           </div>
 
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            Created: {new Date(dispute.createdAt).toLocaleDateString()}
+                            Created:{" "}
+                            {new Date(dispute.createdAt).toLocaleDateString()}
                           </div>
 
                           {dispute.responses?.length > 0 && (
@@ -223,12 +281,18 @@ const StaffDisputes = () => {
                           )}
 
                           <div className="flex items-center gap-1">
-                            Priority: <span className={`px-2 py-1 text-xs rounded-full ${
-                              dispute.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                              dispute.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                              dispute.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
+                            Priority:{" "}
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                dispute.priority === "urgent"
+                                  ? "bg-red-100 text-red-800"
+                                  : dispute.priority === "high"
+                                    ? "bg-orange-100 text-orange-800"
+                                    : dispute.priority === "medium"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-green-100 text-green-800"
+                              }`}
+                            >
                               {dispute.priority}
                             </span>
                           </div>
@@ -244,7 +308,7 @@ const StaffDisputes = () => {
                           View Details
                         </Button>
 
-                        {dispute.status !== 'resolved' && (
+                        {dispute.status !== "resolved" && (
                           <Button
                             variant="success"
                             size="sm"
@@ -252,6 +316,25 @@ const StaffDisputes = () => {
                           >
                             Close
                           </Button>
+                        )}
+
+                        {currentUser?.role === "admin" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEdit(dispute)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => confirmDelete(dispute)}
+                            >
+                              Delete
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -277,7 +360,9 @@ const StaffDisputes = () => {
               <input
                 type="text"
                 value={disputeForm.title}
-                onChange={(e) => setDisputeForm({ ...disputeForm, title: e.target.value })}
+                onChange={(e) =>
+                  setDisputeForm({ ...disputeForm, title: e.target.value })
+                }
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Enter dispute title"
                 required
@@ -290,7 +375,12 @@ const StaffDisputes = () => {
               </label>
               <textarea
                 value={disputeForm.description}
-                onChange={(e) => setDisputeForm({ ...disputeForm, description: e.target.value })}
+                onChange={(e) =>
+                  setDisputeForm({
+                    ...disputeForm,
+                    description: e.target.value,
+                  })
+                }
                 rows={4}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Describe the dispute in detail"
@@ -305,7 +395,12 @@ const StaffDisputes = () => {
                 </label>
                 <select
                   value={disputeForm.raised_against}
-                  onChange={(e) => setDisputeForm({ ...disputeForm, raised_against: e.target.value })}
+                  onChange={(e) =>
+                    setDisputeForm({
+                      ...disputeForm,
+                      raised_against: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   required
                 >
@@ -324,7 +419,9 @@ const StaffDisputes = () => {
                 </label>
                 <select
                   value={disputeForm.priority}
-                  onChange={(e) => setDisputeForm({ ...disputeForm, priority: e.target.value })}
+                  onChange={(e) =>
+                    setDisputeForm({ ...disputeForm, priority: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="low">Low</option>
@@ -353,6 +450,139 @@ const StaffDisputes = () => {
               </Button>
             </div>
           </form>
+        </Modal>
+        {/* Edit Dispute Modal */}
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingDispute(null);
+          }}
+          title="Edit Dispute"
+          size="lg"
+        >
+          {editingDispute && (
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitEdit();
+              }}
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title
+                </label>
+                <input
+                  value={editingDispute.title}
+                  onChange={(e) =>
+                    setEditingDispute({
+                      ...editingDispute,
+                      title: e.target.value,
+                    })
+                  }
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={editingDispute.description || ""}
+                  onChange={(e) =>
+                    setEditingDispute({
+                      ...editingDispute,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={editingDispute.priority}
+                    onChange={(e) =>
+                      setEditingDispute({
+                        ...editingDispute,
+                        priority: e.target.value,
+                      })
+                    }
+                    className="w-full"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={editingDispute.status}
+                    onChange={(e) =>
+                      setEditingDispute({
+                        ...editingDispute,
+                        status: e.target.value,
+                      })
+                    }
+                    className="w-full"
+                  >
+                    <option value="open">Open</option>
+                    <option value="in_review">In Review</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="escalated">Escalated</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingDispute(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button loading={submitting} onClick={submitEdit}>
+                  Save
+                </Button>
+              </div>
+            </form>
+          )}
+        </Modal>
+
+        {/* Delete Confirm Modal */}
+        <Modal
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          title="Confirm Delete"
+          size="md"
+        >
+          <div>
+            <p>
+              Are you sure you want to delete this dispute? This will be a
+              soft-delete.
+            </p>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={doDelete}>
+                Delete
+              </Button>
+            </div>
+          </div>
         </Modal>
 
         {/* Dispute Detail Modal */}
@@ -383,7 +613,9 @@ const StaffDisputes = () => {
                     Raised Against
                   </h5>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {selectedDispute.raisedAgainst?.fullName || selectedDispute.raisedAgainst?.username || 'Unknown'}
+                    {selectedDispute.raisedAgainst?.fullName ||
+                      selectedDispute.raisedAgainst?.username ||
+                      "Unknown"}
                   </p>
                 </div>
 
@@ -391,12 +623,17 @@ const StaffDisputes = () => {
                   <h5 className="font-medium text-gray-900 dark:text-white mb-1">
                     Priority
                   </h5>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    selectedDispute.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                    selectedDispute.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                    selectedDispute.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      selectedDispute.priority === "urgent"
+                        ? "bg-red-100 text-red-800"
+                        : selectedDispute.priority === "high"
+                          ? "bg-orange-100 text-orange-800"
+                          : selectedDispute.priority === "medium"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-green-100 text-green-800"
+                    }`}
+                  >
                     {selectedDispute.priority}
                   </span>
                 </div>
@@ -436,7 +673,9 @@ const StaffDisputes = () => {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {response.respondedBy?.fullName || response.respondedBy?.username || 'Unknown'}
+                            {response.respondedBy?.fullName ||
+                              response.respondedBy?.username ||
+                              "Unknown"}
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {new Date(response.createdAt).toLocaleString()}
@@ -459,7 +698,7 @@ const StaffDisputes = () => {
                   Close
                 </Button>
 
-                {selectedDispute.status !== 'resolved' && (
+                {selectedDispute.status !== "resolved" && (
                   <Button
                     variant="success"
                     onClick={() => {

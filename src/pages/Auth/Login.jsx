@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
@@ -14,6 +15,10 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const expired = params.get("reason") === "expired";
 
   const navigate = useNavigate();
 
@@ -88,9 +93,11 @@ const Login = () => {
             </div>
 
             {/* Error Message */}
-            {error && (
+            {(expired || error) && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
-                {error}
+                {expired
+                  ? "Your session has expired. Please sign in again."
+                  : error}
               </div>
             )}
 

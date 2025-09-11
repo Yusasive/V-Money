@@ -5,7 +5,13 @@ import SubmissionModal from "./SubmissionModal";
 
 const steps = ["Documentation", "Requirements"];
 
-export default function OnboardingForm() {
+export default function OnboardingForm({
+  initialData = {},
+  initialFiles = {},
+  isEdit = false,
+  protectedFields = ["bvn", "nin", "serialNo"],
+  onSaveText,
+}) {
   const [showModal, setShowModal] = useState(false);
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({
@@ -15,6 +21,7 @@ export default function OnboardingForm() {
     gender: "",
     phone: "",
     email: "",
+    username: "",
     address: "",
     state: "",
     lga: "",
@@ -49,9 +56,21 @@ export default function OnboardingForm() {
       if (saved) {
         const parsed = JSON.parse(saved);
         setFormData((prev) => ({ ...prev, ...parsed }));
+      } else if (initialData && Object.keys(initialData).length) {
+        // prefill from passed initialData (email/username or full onboardingData)
+        setFormData((prev) => ({ ...prev, ...initialData }));
       }
     } catch {}
-  }, []);
+  }, [initialData]);
+
+  // Initialize previews from any provided initialFiles (fieldName -> url)
+  useEffect(() => {
+    try {
+      if (initialFiles && Object.keys(initialFiles).length) {
+        setPreviews((p) => ({ ...p, ...initialFiles }));
+      }
+    } catch {}
+  }, [initialFiles]);
 
   useEffect(() => {
     try {
@@ -67,6 +86,7 @@ export default function OnboardingForm() {
     "gender",
     "phone",
     "email",
+    "username",
     "address",
     "state",
     "lga",
@@ -95,6 +115,10 @@ export default function OnboardingForm() {
     }
     if (name === "nin" && value) {
       if (!/^[0-9]{11}$/.test(value)) return "NIN must be 11 digits.";
+    }
+    if (name === "username" && value) {
+      if (typeof value === "string" && value.trim().length < 3)
+        return "Username must be at least 3 characters.";
     }
 
     return "";
@@ -192,13 +216,9 @@ export default function OnboardingForm() {
     setLoading(true);
     setError("");
 
-    // Validate required files before submit
-    const missingFiles = [
-      "utilityBill",
-      "passport",
-      "businessPic",
-      "ninSlip",
-    ].filter((k) => !formData[k]);
+    // Validate required files before submit. In edit mode, existing previews satisfy the requirement.
+    const fileFields = ["utilityBill", "passport", "businessPic", "ninSlip"];
+    const missingFiles = fileFields.filter((k) => !formData[k] && !previews[k]);
     if (missingFiles.length) {
       setError(`Please upload: ${missingFiles.join(", ")}`);
       setLoading(false);
@@ -251,6 +271,7 @@ export default function OnboardingForm() {
         businessName: "",
         businessAddress: "",
         serialNo: "",
+        username: "",
         utilityBill: null,
         passport: null,
         businessPic: null,
@@ -262,6 +283,18 @@ export default function OnboardingForm() {
       setAttemptedSubmit(false);
       setStep(0);
       setShowModal(true);
+      // If parent wants to persist text-only fields (profile edit), notify it
+      try {
+        const textOnly = {};
+        Object.keys(formData).forEach((key) => {
+          if (formData[key] && typeof formData[key] !== "object")
+            textOnly[key] = formData[key];
+        });
+        if (onSaveText) await onSaveText(textOnly);
+      } catch (e) {
+        // ignore parent save errors here; parent will show its own toast
+        console.debug("onSaveText hook failed", e?.message || e);
+      }
     } catch (error) {
       setError(
         error.response?.data?.message ||
@@ -575,6 +608,32 @@ export default function OnboardingForm() {
                 )}
               </div>
 
+              {/* Username */}
+              <div>
+                <label
+                  htmlFor="username"
+                  className="block text-gray-700 font-medium"
+                >
+                  Username <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  placeholder="your-username"
+                  onBlur={() => setTouched((t) => ({ ...t, username: true }))}
+                  required
+                  className={inputClass("username")}
+                />
+                {showErrorFor("username") && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {fieldErrors.username}
+                  </p>
+                )}
+              </div>
+
               {/* State */}
               <div>
                 <label
@@ -649,10 +708,23 @@ export default function OnboardingForm() {
                   pattern="^[0-9]{11}$"
                   placeholder="11 digits"
                   required
+                  disabled={isEdit && protectedFields.includes("bvn")}
                   className={inputClass("bvn")}
                 />
                 {showErrorFor("bvn") && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.bvn}</p>
+                )}
+                {isEdit && protectedFields.includes("bvn") && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    To change BVN, please{" "}
+                    <a
+                      href="mailto:admin@example.com"
+                      className="text-primary underline"
+                    >
+                      contact admin
+                    </a>
+                    .
+                  </p>
                 )}
               </div>
 
@@ -680,10 +752,23 @@ export default function OnboardingForm() {
                   pattern="^[0-9]{11}$"
                   placeholder="11 digits"
                   required
+                  disabled={isEdit && protectedFields.includes("nin")}
                   className={inputClass("nin")}
                 />
                 {showErrorFor("nin") && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.nin}</p>
+                )}
+                {isEdit && protectedFields.includes("nin") && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    To change NIN, please{" "}
+                    <a
+                      href="mailto:admin@example.com"
+                      className="text-primary underline"
+                    >
+                      contact admin
+                    </a>
+                    .
+                  </p>
                 )}
               </div>
 
@@ -719,8 +804,21 @@ export default function OnboardingForm() {
                   name="serialNo"
                   value={formData.serialNo}
                   onChange={handleChange}
+                  disabled={isEdit && protectedFields.includes("serialNo")}
                   className="w-full border p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+                {isEdit && protectedFields.includes("serialNo") && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    To change POS serial number, please{" "}
+                    <a
+                      href="mailto:admin@example.com"
+                      className="text-primary underline"
+                    >
+                      contact admin
+                    </a>
+                    .
+                  </p>
+                )}
               </div>
 
               {/* Address - full width */}
