@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Button from "../../components/UI/Button";
-import toast from "react-hot-toast";
+// removed unused toast import
 
 const Login = () => {
   const { login, clearSessionExpired, sessionExpired } = useAuth();
@@ -43,23 +43,25 @@ const Login = () => {
 
     try {
       const { user } = await login(formData);
-      
+
       // Redirect based on role or return to previous page
-      const redirectPath = from || (() => {
-        switch (user.role) {
-        case "admin":
-          return "/admin/dashboard";
-        case "staff":
-          return "/staff/dashboard";
-        case "aggregator":
-          return "/aggregator/dashboard";
-        case "merchant":
-          return "/merchant/dashboard";
-        default:
-          return "/";
-        }
-      })();
-      
+      const redirectPath =
+        from ||
+        (() => {
+          switch (user.role) {
+            case "admin":
+              return "/admin/dashboard";
+            case "staff":
+              return "/staff/dashboard";
+            case "aggregator":
+              return "/aggregator/dashboard";
+            case "merchant":
+              return "/merchant/dashboard";
+            default:
+              return "/";
+          }
+        })();
+
       navigate(redirectPath, { replace: true });
     } catch (err) {
       setError(err.message || "Login failed");

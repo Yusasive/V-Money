@@ -42,6 +42,7 @@ import MerchantDashboard from "./pages/Merchant/MerchantDashboard";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import AuthGuard from "./components/Auth/AuthGuard";
 import SessionManager from "./components/UI/SessionManager";
+import Button from "./components/UI/Button";
 
 const App = () => {
   return (
@@ -50,7 +51,7 @@ const App = () => {
         <div className="App">
           {/* Global Session Manager */}
           <SessionManager />
-          
+
           <Toaster
             position="top-right"
             toastOptions={{
@@ -115,40 +116,40 @@ const App = () => {
             <Route path="/onboarding" element={<OnboardingPage />} />
 
             {/* Auth Routes - Only show when not authenticated */}
-            <Route 
-              path="/login" 
+            <Route
+              path="/login"
               element={
                 <AuthGuard redirectTo="/">
                   <Login />
                 </AuthGuard>
-              } 
+              }
             />
-            <Route 
-              path="/register" 
+            <Route
+              path="/register"
               element={
                 <AuthGuard redirectTo="/">
                   <Register />
                 </AuthGuard>
-              } 
+              }
             />
-            <Route 
-              path="/forgot-password" 
+            <Route
+              path="/forgot-password"
               element={
                 <AuthGuard redirectTo="/">
                   <ForgotPassword />
                 </AuthGuard>
-              } 
+              }
             />
             <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Admin Routes */}
-            <Route 
-              path="/admin/login" 
+            <Route
+              path="/admin/login"
               element={
                 <AuthGuard redirectTo="/admin/dashboard">
                   <AdminLogin />
                 </AuthGuard>
-              } 
+              }
             />
             <Route
               path="/admin/dashboard/*"
@@ -259,7 +260,7 @@ const App = () => {
                     </p>
                     <Button
                       variant="primary"
-                      onClick={() => window.location.href = '/'}
+                      onClick={() => (window.location.href = "/")}
                       className="mt-4"
                     >
                       Go Home

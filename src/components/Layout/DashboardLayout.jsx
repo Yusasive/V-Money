@@ -19,7 +19,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-import toast from "react-hot-toast";
+// removed unused toast import
 
 const DashboardLayout = ({ children, userRole }) => {
   const { user, logout, isLoading } = useAuth();
@@ -41,7 +41,6 @@ const DashboardLayout = ({ children, userRole }) => {
 
   const navigate = useNavigate();
   const location = useLocation();
-
 
   useEffect(() => {
     if (isDark) {
@@ -81,7 +80,9 @@ const DashboardLayout = ({ children, userRole }) => {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading dashboard...
+          </p>
         </div>
       </div>
     );
@@ -89,7 +90,7 @@ const DashboardLayout = ({ children, userRole }) => {
 
   // Redirect if no user
   if (!user) {
-    navigate('/login');
+    navigate("/login");
     return null;
   }
   // Navigation items based on role
@@ -229,7 +230,7 @@ const DashboardLayout = ({ children, userRole }) => {
                 <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
                   {userRole}
                 </p>
-                {user?.status && user.status !== 'approved' && (
+                {user?.status && user.status !== "approved" && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 capitalize">
                     {user.status}
                   </p>

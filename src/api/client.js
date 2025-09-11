@@ -10,12 +10,12 @@ function resolveApiBaseUrl() {
     if (typeof window !== "undefined") {
       const { hostname } = window.location;
       const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
-      const port = window.location.port;
-      
+      // const port = window.location.port; // not used; retained comment for potential future debugging
+
       if (isLocal) {
         return `http://localhost:5000/api`;
       }
-      
+
       // For production, use relative path or current origin
       return `${window.location.origin}/api`;
     }
@@ -35,7 +35,7 @@ const api = axios.create({
   withCredentials: true,
   // Retry configuration
   retry: 3,
-  retryDelay: 1000
+  retryDelay: 1000,
 });
 
 // Request retry logic
@@ -43,56 +43,61 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config;
-    
+
     // Retry on network errors or 5xx errors
     if (
       config &&
       !config.__isRetryRequest &&
-      (error.code === 'NETWORK_ERROR' || 
-       error.code === 'ECONNABORTED' ||
-       (error.response?.status >= 500 && error.response?.status < 600))
+      (error.code === "NETWORK_ERROR" ||
+        error.code === "ECONNABORTED" ||
+        (error.response?.status >= 500 && error.response?.status < 600))
     ) {
       config.__isRetryRequest = true;
       config.__retryCount = config.__retryCount || 0;
-      
+
       if (config.__retryCount < (config.retry || 3)) {
         config.__retryCount++;
         const delay = config.retryDelay || 1000;
-        
-        console.log(`Retrying request (${config.__retryCount}/${config.retry}) after ${delay}ms`);
-        
-        return new Promise(resolve => {
+
+        console.log(
+          `Retrying request (${config.__retryCount}/${config.retry}) after ${delay}ms`
+        );
+
+        return new Promise((resolve) => {
           setTimeout(() => resolve(api(config)), delay * config.__retryCount);
         });
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
 
 // Attach token from localStorage on every request
-api.interceptors.request.use((config) => {
-  try {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      config.headers = config.headers || {};
-      config.headers["Authorization"] = `Bearer ${token}`;
-      
-      // Add request timestamp for debugging
-      config.headers["X-Request-Time"] = new Date().toISOString();
-      
-      // Add client info for security
-      config.headers["X-Client-Version"] = "2.0.0";
+api.interceptors.request.use(
+  (config) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        config.headers = config.headers || {};
+        config.headers["Authorization"] = `Bearer ${token}`;
+
+        // Add request timestamp for debugging
+        config.headers["X-Request-Time"] = new Date().toISOString();
+
+        // Add client info for security
+        config.headers["X-Client-Version"] = "2.0.0";
+      }
+    } catch (e) {
+      console.error("Error in request interceptor:", e);
     }
-  } catch (e) {
-    console.error("Error in request interceptor:", e);
+    return config;
+  },
+  (error) => {
+    console.error("Request interceptor error:", error);
+    return Promise.reject(error);
   }
-  return config;
-}, (error) => {
-  console.error("Request interceptor error:", error);
-  return Promise.reject(error);
-});
+);
 
 // Response interceptor for handling auth errors
 api.interceptors.response.use(
@@ -101,14 +106,14 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const message = error.response?.data?.message;
     const config = error.config;
-    
+
     // Don't redirect on auth endpoints to avoid loops
-    const isAuthEndpoint = config?.url?.includes('/auth/');
-    
+    const isAuthEndpoint = config?.url?.includes("/auth/");
+
     if (status === 401) {
       // Clear token for any 401. If token expired, redirect with a reason so UI can show a friendly message
       localStorage.removeItem("authToken");
-      
+
       if (!isAuthEndpoint) {
         if (message === "Token expired" || message === "Session invalidated") {
           window.location.href = "/login?reason=expired";
@@ -117,7 +122,7 @@ api.interceptors.response.use(
         }
       }
     }
-    
+
     // Handle account status errors
     if (status === 403) {
       if (message === "Account suspended") {
@@ -128,35 +133,40 @@ api.interceptors.response.use(
         window.location.href = "/login?reason=pending";
       }
     }
-    
+
     // Log errors for debugging
     if (status >= 400) {
-      console.error('API Error:', {
+      console.error("API Error:", {
         status,
         message,
         url: config?.url,
-        method: config?.method
+        method: config?.method,
       });
     }
-    
+
     return Promise.reject(error);
   }
 );
 
 // Add request/response logging in development
-if (process.env.NODE_ENV === 'development') {
-  api.interceptors.request.use(request => {
-    console.log('API Request:', request.method?.toUpperCase(), request.url);
+if (process.env.NODE_ENV === "development") {
+  api.interceptors.request.use((request) => {
+    console.log("API Request:", request.method?.toUpperCase(), request.url);
     return request;
   });
-  
+
   api.interceptors.response.use(
-    response => {
-      console.log('API Response:', response.status, response.config.url);
+    (response) => {
+      console.log("API Response:", response.status, response.config.url);
       return response;
     },
-    error => {
-      console.log('API Error:', error.response?.status, error.config?.url, error.message);
+    (error) => {
+      console.log(
+        "API Error:",
+        error.response?.status,
+        error.config?.url,
+        error.message
+      );
       return Promise.reject(error);
     }
   );
@@ -173,7 +183,7 @@ export const authApi = {
   resetPassword: (data) => api.post("/auth/reset-password", data),
   changePassword: (data) => api.post("/auth/change-password", data),
   refreshToken: () => api.post("/auth/refresh"),
-  validateToken: (token) => api.post("/auth/validate", { token })
+  validateToken: (token) => api.post("/auth/validate", { token }),
 };
 
 // ---- User Management API ----
@@ -187,7 +197,8 @@ export const usersApi = {
   update: (id, data) => api.patch(`/users/${id}`, data),
   delete: (id) => api.delete(`/users/${id}`),
   getSessions: (id) => api.get(`/users/${id}/sessions`),
-  invalidateSession: (id, sessionId) => api.delete(`/users/${id}/sessions/${sessionId}`)
+  invalidateSession: (id, sessionId) =>
+    api.delete(`/users/${id}/sessions/${sessionId}`),
 };
 
 // ---- Tasks API ----
@@ -251,7 +262,7 @@ export const formsApi = {
   submit: (formData) =>
     api.post("/forms/submit", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-      timeout: 60000 // 60 seconds for file uploads
+      timeout: 60000, // 60 seconds for file uploads
     }),
   list: (params = {}) => api.get("/forms", { params }),
   get: (id) => api.get(`/forms/${id}`),
@@ -265,12 +276,12 @@ export const uploadApi = {
   single: (formData) =>
     api.post("/upload/single", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-      timeout: 120000 // 2 minutes for file uploads
+      timeout: 120000, // 2 minutes for file uploads
     }),
   multiple: (formData) =>
     api.post("/upload/multiple", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-      timeout: 120000 // 2 minutes for file uploads
+      timeout: 120000, // 2 minutes for file uploads
     }),
   list: (nextCursor) =>
     api.get("/upload/list", { params: nextCursor ? { nextCursor } : {} }),
@@ -290,7 +301,7 @@ export const securityApi = {
   changePassword: (data) => api.post("/auth/change-password", data),
   enable2FA: () => api.post("/auth/2fa/enable"),
   disable2FA: (code) => api.post("/auth/2fa/disable", { code }),
-  verify2FA: (code) => api.post("/auth/2fa/verify", { code })
+  verify2FA: (code) => api.post("/auth/2fa/verify", { code }),
 };
 
 // Export configured axios instance

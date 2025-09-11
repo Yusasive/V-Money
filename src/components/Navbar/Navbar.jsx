@@ -5,23 +5,15 @@ import { IoMdMenu, IoMdClose } from "react-icons/io";
 import Logo from "../../assets/logo.png";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import Button from "../UI/Button";
 import Badge from "../UI/Badge";
 
 const Navbar = () => {
   const location = useLocation();
-  const { 
-    isAuthenticated, 
-    user, 
-    logout, 
-    getDashboardRoute, 
-    isAccountActive,
-    needsOnboarding,
-    getSessionInfo 
-  } = useAuth();
+  const { isAuthenticated, user, logout, getDashboardRoute, getSessionInfo } =
+    useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  
+
   const toggleMenu = () => {
     setIsOpen(!isOpen);
   };
@@ -32,7 +24,7 @@ const Navbar = () => {
       await logout();
       setIsOpen(false);
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       setLoggingOut(false);
     }
@@ -60,7 +52,7 @@ const Navbar = () => {
           </div>
         </div>
       )}
-      
+
       <div className="flex items-center justify-between px-4 lg:px-16  py-2">
         <div>
           <Link to="/">
@@ -115,7 +107,7 @@ const Navbar = () => {
                 Pricing
               </NavLink>
             </div>
-            
+
             {/* Auth-aware navigation */}
             <div className="flex flex-row lg:flex-row justify-center py-5 space-x-6">
               {isAuthenticated ? (
@@ -125,16 +117,21 @@ const Navbar = () => {
                     <div className="text-right">
                       <p className="text-xs text-gray-600">Welcome back,</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {user?.fullName?.split(' ')[0] || user?.username}
+                        {user?.fullName?.split(" ")[0] || user?.username}
                       </p>
                     </div>
-                    {user?.status && user.status !== 'approved' && (
-                      <Badge variant={user.status === 'pending' ? 'warning' : 'danger'} size="sm">
+                    {user?.status && user.status !== "approved" && (
+                      <Badge
+                        variant={
+                          user.status === "pending" ? "warning" : "danger"
+                        }
+                        size="sm"
+                      >
                         {user.status}
                       </Badge>
                     )}
                   </div>
-                  
+
                   <Link
                     to={getDashboardRoute()}
                     className="bg-primary hover:bg-blue-700 text-white py-3 px-6 rounded-xl text-center transition-colors"
@@ -146,7 +143,7 @@ const Navbar = () => {
                     disabled={loggingOut}
                     className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center transition-colors disabled:opacity-50"
                   >
-                    {loggingOut ? 'Logging out...' : 'Logout'}
+                    {loggingOut ? "Logging out..." : "Logout"}
                   </button>
                 </div>
               ) : (
@@ -232,7 +229,7 @@ const Navbar = () => {
             PRICING
           </NavLink>
         </div>
-        
+
         {/* Mobile Auth Menu */}
         <div className="mt-4 flex flex-col gap-3 w-full px-8">
           {isAuthenticated ? (
@@ -242,13 +239,16 @@ const Navbar = () => {
                 <p className="text-sm text-gray-600">
                   {user?.fullName || user?.username}
                 </p>
-                {user?.status && user.status !== 'approved' && (
-                  <Badge variant={user.status === 'pending' ? 'warning' : 'danger'} size="sm">
+                {user?.status && user.status !== "approved" && (
+                  <Badge
+                    variant={user.status === "pending" ? "warning" : "danger"}
+                    size="sm"
+                  >
                     {user.status}
                   </Badge>
                 )}
               </div>
-              
+
               <Link
                 to={getDashboardRoute()}
                 className="bg-primary hover:bg-blue-700 text-white py-3 px-6 rounded-xl text-center w-full transition-colors"
@@ -261,7 +261,7 @@ const Navbar = () => {
                 disabled={loggingOut}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center w-full transition-colors disabled:opacity-50"
               >
-                {loggingOut ? 'Logging out...' : 'Logout'}
+                {loggingOut ? "Logging out..." : "Logout"}
               </button>
             </>
           ) : (

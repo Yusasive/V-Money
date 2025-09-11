@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Shield, AlertTriangle, RefreshCw } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import Button from './Button';
-import Modal from './Modal';
+import React, { useState, useEffect } from "react";
+import { AnimatePresence } from "framer-motion";
+import { Clock, Shield, AlertTriangle, RefreshCw } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import Button from "./Button";
+import Modal from "./Modal";
 
 const SessionManager = () => {
-  const { 
-    isAuthenticated, 
-    getSessionInfo, 
-    logout, 
-    updateUser 
-  } = useAuth();
-  
+  const { isAuthenticated, getSessionInfo, logout, updateUser } = useAuth();
+
   const [showWarning, setShowWarning] = useState(false);
   const [sessionInfo, setSessionInfo] = useState(null);
   const [autoLogoutTimer, setAutoLogoutTimer] = useState(null);
@@ -23,15 +18,18 @@ const SessionManager = () => {
     const checkSession = () => {
       const info = getSessionInfo();
       setSessionInfo(info);
-      
+
       if (info?.isExpiringSoon && !showWarning) {
         setShowWarning(true);
-        
+
         // Auto logout in 5 minutes if no action
-        const timer = setTimeout(() => {
-          logout(false);
-        }, 5 * 60 * 1000);
-        
+        const timer = setTimeout(
+          () => {
+            logout(false);
+          },
+          5 * 60 * 1000
+        );
+
         setAutoLogoutTimer(timer);
       }
     };
@@ -52,13 +50,13 @@ const SessionManager = () => {
     try {
       await updateUser();
       setShowWarning(false);
-      
+
       if (autoLogoutTimer) {
         clearTimeout(autoLogoutTimer);
         setAutoLogoutTimer(null);
       }
     } catch (error) {
-      console.error('Failed to extend session:', error);
+      console.error("Failed to extend session:", error);
     }
   };
 
@@ -89,7 +87,8 @@ const SessionManager = () => {
                 Session Timeout Warning
               </h4>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                Your session will expire in {minutesLeft} minute{minutesLeft !== 1 ? 's' : ''} due to inactivity.
+                Your session will expire in {minutesLeft} minute
+                {minutesLeft !== 1 ? "s" : ""} due to inactivity.
               </p>
             </div>
           </div>
@@ -97,12 +96,17 @@ const SessionManager = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Clock className="h-4 w-4" />
-              <span>Session started: {sessionInfo?.issuedAt?.toLocaleTimeString()}</span>
+              <span>
+                Session started: {sessionInfo?.issuedAt?.toLocaleTimeString()}
+              </span>
             </div>
-            
+
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Shield className="h-4 w-4" />
-              <span>For your security, inactive sessions are automatically logged out</span>
+              <span>
+                For your security, inactive sessions are automatically logged
+                out
+              </span>
             </div>
           </div>
 

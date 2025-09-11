@@ -1,23 +1,17 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import LoadingSpinner from '../UI/LoadingSpinner';
-import Badge from '../UI/Badge';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import LoadingSpinner from "../UI/LoadingSpinner";
+import Badge from "../UI/Badge";
 
-const ProtectedRoute = ({ 
-  children, 
-  roles = [], 
+const ProtectedRoute = ({
+  children,
+  roles = [],
   requireApproval = true,
-  fallbackPath = '/login' 
+  fallbackPath = "/login",
 }) => {
-  const { 
-    user, 
-    isAuthenticated, 
-    isLoading, 
-    sessionExpired, 
-    isAccountActive,
-    getSessionInfo 
-  } = useAuth();
+  const { user, isAuthenticated, isLoading, sessionExpired, getSessionInfo } =
+    useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -28,23 +22,13 @@ const ProtectedRoute = ({
   // Handle session expiration
   if (sessionExpired) {
     return (
-      <Navigate 
-        to="/login?reason=expired" 
-        state={{ from: location }} 
-        replace 
-      />
+      <Navigate to="/login?reason=expired" state={{ from: location }} replace />
     );
   }
 
   // Redirect to login if not authenticated
   if (!isAuthenticated || !user) {
-    return (
-      <Navigate 
-        to={fallbackPath} 
-        state={{ from: location }} 
-        replace 
-      />
-    );
+    return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
   // Check role requirements
@@ -61,10 +45,13 @@ const ProtectedRoute = ({
           </p>
           <div className="space-y-2">
             <p className="text-sm text-gray-500 dark:text-gray-500">
-            Required roles: {roles.join(', ')}
+              Required roles: {roles.join(", ")}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500">
-              Your role: <Badge variant="default" size="sm">{user.role}</Badge>
+              Your role:{" "}
+              <Badge variant="default" size="sm">
+                {user.role}
+              </Badge>
             </p>
           </div>
         </div>
@@ -73,14 +60,14 @@ const ProtectedRoute = ({
   }
 
   // Check approval status if required
-  if (requireApproval && user.status !== 'approved' && user.role !== 'admin') {
+  if (requireApproval && user.status !== "approved" && user.role !== "admin") {
     const getStatusMessage = () => {
       switch (user.status) {
-        case 'pending':
+        case "pending":
           return "Your account is currently pending admin approval. You'll receive an email notification once your account is approved.";
-        case 'rejected':
+        case "rejected":
           return "Your account has been rejected. Please contact support for more information or create a new account.";
-        case 'suspended':
+        case "suspended":
           return "Your account has been suspended. Please contact support to resolve this issue.";
         default:
           return "Your account status prevents access to this page.";
@@ -89,10 +76,14 @@ const ProtectedRoute = ({
 
     const getStatusVariant = () => {
       switch (user.status) {
-        case 'pending': return 'warning';
-        case 'rejected': return 'danger';
-        case 'suspended': return 'danger';
-        default: return 'default';
+        case "pending":
+          return "warning";
+        case "rejected":
+          return "danger";
+        case "suspended":
+          return "danger";
+        default:
+          return "default";
       }
     };
 
@@ -100,29 +91,40 @@ const ProtectedRoute = ({
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="text-6xl mb-4">
-            {user.status === 'pending' ? '⏳' : user.status === 'rejected' ? '❌' : '🚫'}
+            {user.status === "pending"
+              ? "⏳"
+              : user.status === "rejected"
+                ? "❌"
+                : "🚫"}
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            {user.status === 'pending' ? 'Account Pending Approval' : 
-             user.status === 'rejected' ? 'Account Rejected' : 
-             user.status === 'suspended' ? 'Account Suspended' : 'Account Issue'}
+            {user.status === "pending"
+              ? "Account Pending Approval"
+              : user.status === "rejected"
+                ? "Account Rejected"
+                : user.status === "suspended"
+                  ? "Account Suspended"
+                  : "Account Issue"}
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             {getStatusMessage()}
           </p>
           <div className="space-y-2">
             <p className="text-sm text-gray-500 dark:text-gray-500">
-              Current status: <Badge variant={getStatusVariant()} size="sm">{user.status}</Badge>
+              Current status:{" "}
+              <Badge variant={getStatusVariant()} size="sm">
+                {user.status}
+              </Badge>
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Account created: {new Date(user.createdAt).toLocaleDateString()}
             </p>
           </div>
-          
-          {user.status === 'rejected' && (
+
+          {user.status === "rejected" && (
             <div className="mt-6">
               <button
-                onClick={() => window.location.href = '/register'}
+                onClick={() => (window.location.href = "/register")}
                 className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Create New Account
@@ -145,7 +147,8 @@ const ProtectedRoute = ({
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <p className="text-sm text-amber-800">
-              ⚠️ Your session will expire in {Math.round(sessionInfo.timeUntilExpiry / (1000 * 60))} minutes.
+              ⚠️ Your session will expire in{" "}
+              {Math.round(sessionInfo.timeUntilExpiry / (1000 * 60))} minutes.
             </p>
             <button
               onClick={() => window.location.reload()}
