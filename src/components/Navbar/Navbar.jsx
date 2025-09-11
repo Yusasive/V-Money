@@ -4,12 +4,25 @@ import { motion } from "framer-motion";
 import { IoMdMenu, IoMdClose } from "react-icons/io";
 import Logo from "../../assets/logo.png";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import Button from "../UI/Button";
 
 const Navbar = () => {
   const location = useLocation();
+  const { isAuthenticated, user, logout, getDashboardRoute } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  
   const toggleMenu = () => {
     setIsOpen(!isOpen);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsOpen(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -68,20 +81,41 @@ const Navbar = () => {
                 Pricing
               </NavLink>
             </div>
+            
+            {/* Auth-aware navigation */}
             <div className="flex flex-row lg:flex-row justify-center py-5 space-x-6">
-              <Link
-                className="bg-[#eff1fa] text-primary py-3 px-6 rounded-xl text-center hover:bg-[#e4e6ee]"
-                to="/login"
-              >
-                Login
-              </Link>
-              {location.pathname !== "/onboarding" && (
-                <Link
-                  className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center"
-                  to="/onboarding"
-                >
-                  Start for free
-                </Link>
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <Link
+                    to={getDashboardRoute()}
+                    className="bg-primary hover:bg-blue-700 text-white py-3 px-6 rounded-xl text-center transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Link
+                    className="bg-[#eff1fa] text-primary py-3 px-6 rounded-xl text-center hover:bg-[#e4e6ee]"
+                    to="/login"
+                  >
+                    Login
+                  </Link>
+                  {location.pathname !== "/onboarding" && (
+                    <Link
+                      className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center"
+                      to="/onboarding"
+                    >
+                      Start for free
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -144,20 +178,44 @@ const Navbar = () => {
             PRICING
           </NavLink>
         </div>
+        
+        {/* Mobile Auth Menu */}
         <div className="mt-4 flex flex-col gap-3 w-full px-8">
-          <Link
-            className="bg-[#f5c58a] text-white py-3 px-6 rounded-xl text-center w-full hover:bg-[#FF8C00]"
-            to="/login"
-          >
-            Login
-          </Link>
-          {location.pathname !== "/onboarding" && (
-            <Link
-              className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center w-full"
-              to="/onboarding"
-            >
-              Start for free
-            </Link>
+          {isAuthenticated ? (
+            <>
+              <Link
+                to={getDashboardRoute()}
+                className="bg-primary hover:bg-blue-700 text-white py-3 px-6 rounded-xl text-center w-full transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-xl text-center w-full transition-colors"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                className="bg-[#f5c58a] text-white py-3 px-6 rounded-xl text-center w-full hover:bg-[#FF8C00]"
+                to="/login"
+                onClick={() => setIsOpen(false)}
+              >
+                Login
+              </Link>
+              {location.pathname !== "/onboarding" && (
+                <Link
+                  className="bg-primary hover:bg-[#6871d1] text-white py-3 px-6 rounded-xl text-center w-full"
+                  to="/onboarding"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Start for free
+                </Link>
+              )}
+            </>
           )}
         </div>
       </motion.div>

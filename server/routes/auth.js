@@ -3,33 +3,51 @@ const { body, validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const User = require("../models/User");
-const { authenticateToken } = require("../middleware/auth");
+const { authenticateToken, validateSession } = require("../middleware/auth");
+const { validateEmail, validatePhone } = require("../middleware/security");
 const { sendStatusEmail, sendPasswordResetEmail } = require("../config/email");
 
 const router = express.Router();
 
+// Enhanced validation middleware
+const validateRegistration = [
+  body("fullName")
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage("Full name must be between 2 and 100 characters")
+    .matches(/^[a-zA-Z\s'-]+$/)
+    .withMessage("Full name can only contain letters, spaces, hyphens, and apostrophes"),
+  body("email")
+    .isEmail()
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage("Valid email is required"),
+  body("phone")
+    .custom((value) => {
+      if (!validatePhone(value)) {
+        throw new Error("Valid phone number is required");
+      }
+      return true;
+    }),
+  body("username")
+    .trim()
+    .isLength({ min: 3, max: 30 })
+    .withMessage("Username must be between 3 and 30 characters")
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage("Username can only contain letters, numbers, underscores, and hyphens"),
+  body("password")
+    .isLength({ min: 8, max: 128 })
+    .withMessage("Password must be between 8 and 128 characters")
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage("Password must contain at least one lowercase letter, one uppercase letter, and one number"),
+  body("role")
+    .isIn(["aggregator", "staff"])
+    .withMessage("Invalid role")
+];
 // Register new user (Aggregator/Staff)
 router.post(
   "/register",
-  [
-    body("fullName")
-      .trim()
-      .isLength({ min: 2 })
-      .withMessage("Full name must be at least 2 characters"),
-    body("email")
-      .isEmail()
-      .normalizeEmail()
-      .withMessage("Valid email is required"),
-    body("phone").isMobilePhone().withMessage("Valid phone number is required"),
-    body("username")
-      .trim()
-      .isLength({ min: 3 })
-      .withMessage("Username must be at least 3 characters"),
-    body("password")
-      .isLength({ min: 8 })
-      .withMessage("Password must be at least 8 characters"),
-    body("role").isIn(["aggregator", "staff"]).withMessage("Invalid role"),
-  ],
+  validateRegistration,
   async (req, res) => {
     try {
       const errors = validationResult(req);
@@ -108,7 +126,10 @@ router.post(
 // Login
 router.post(
   "/login",
-  [body("email").isEmail().normalizeEmail(), body("password").exists()],
+  [
+    body("email").isEmail().normalizeEmail().withMessage("Valid email required"),
+    body("password").isLength({ min: 1 }).withMessage("Password required")
+  ],
   async (req, res) => {
     try {
       const errors = validationResult(req);
@@ -124,9 +145,26 @@ router.post(
         return res.status(400).json({ message: "Invalid credentials" });
       }
 
+      // Check if account is locked
+      if (user.isLocked) {
+        return res.status(423).json({ 
+          message: "Account temporarily locked due to too many failed login attempts. Please try again later." 
+        });
+      }
       // Check password
-      const isMatch = await user.comparePassword(password);
+      let isMatch = false;
+      try {
+        isMatch = await user.comparePassword(password);
+      } catch (error) {
+        if (error.message.includes('locked')) {
+          return res.status(423).json({ message: error.message });
+        }
+        throw error;
+      }
+      
       if (!isMatch) {
+        // Increment login attempts
+        await user.incLoginAttempts();
         return res.status(400).json({ message: "Invalid credentials" });
       }
 
@@ -149,6 +187,9 @@ router.post(
         });
       }
 
+      // Reset login attempts on successful login
+      await user.resetLoginAttempts();
+      
       // Update last login
       user.lastLogin = new Date();
       await user.save();
@@ -177,7 +218,7 @@ router.post(
 );
 
 // Get current user
-router.get("/me", authenticateToken, async (req, res) => {
+router.get("/me", authenticateToken, validateSession, async (req, res) => {
   try {
     res.json({
       user: {
@@ -202,9 +243,19 @@ router.get("/me", authenticateToken, async (req, res) => {
 // Forgot password
 router.post(
   "/forgot-password",
-  [body("email").isEmail().normalizeEmail()],
+  [
+    body("email")
+      .isEmail()
+      .normalizeEmail()
+      .withMessage("Valid email required")
+  ],
   async (req, res) => {
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      
       const { email } = req.body;
 
       const user = await User.findOne({ email });
@@ -217,7 +268,7 @@ router.post(
       }
 
       // Generate reset token
-      const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetToken = user.generateSecureToken();
       user.passwordResetToken = resetToken;
       user.passwordResetExpires = Date.now() + 3600000; // 1 hour
       await user.save();
@@ -247,9 +298,21 @@ router.post(
 // Reset password
 router.post(
   "/reset-password",
-  [body("token").exists(), body("password").isLength({ min: 8 })],
+  [
+    body("token").isLength({ min: 1 }).withMessage("Reset token required"),
+    body("password")
+      .isLength({ min: 8, max: 128 })
+      .withMessage("Password must be between 8 and 128 characters")
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .withMessage("Password must contain at least one lowercase letter, one uppercase letter, and one number")
+  ],
   async (req, res) => {
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      
       const { token, password } = req.body;
 
       const user = await User.findOne({
@@ -267,6 +330,9 @@ router.post(
       user.password = password;
       user.passwordResetToken = null;
       user.passwordResetExpires = null;
+      // Reset login attempts when password is reset
+      user.loginAttempts = 0;
+      user.lockUntil = null;
       await user.save();
 
       res.json({ message: "Password reset successful" });
@@ -282,11 +348,21 @@ router.post(
   "/change-password",
   [
     authenticateToken,
+    validateSession,
     body("current").exists(),
-    body("new").isLength({ min: 8 }),
+    body("new")
+      .isLength({ min: 8, max: 128 })
+      .withMessage("Password must be between 8 and 128 characters")
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      .withMessage("Password must contain at least one lowercase letter, one uppercase letter, and one number")
   ],
   async (req, res) => {
     try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      
       const { current, new: newPassword } = req.body;
 
       const user = await User.findById(req.user._id).select("+password");
@@ -312,10 +388,10 @@ router.post(
 );
 
 // Logout (optional - mainly clears server-side sessions if any)
-router.post("/logout", authenticateToken, async (req, res) => {
+router.post("/logout", authenticateToken, validateSession, async (req, res) => {
   try {
-    // In JWT-based auth, logout is mainly handled client-side
-    // But we can log the logout event or invalidate refresh tokens here
+    // Invalidate current session by incrementing session version
+    await req.user.invalidateAllSessions();
     res.json({ message: "Logout successful" });
   } catch (error) {
     console.error("Logout error:", error);
@@ -323,4 +399,14 @@ router.post("/logout", authenticateToken, async (req, res) => {
   }
 });
 
+// Logout from all devices
+router.post("/logout-all", authenticateToken, validateSession, async (req, res) => {
+  try {
+    await req.user.invalidateAllSessions();
+    res.json({ message: "Logged out from all devices successfully" });
+  } catch (error) {
+    console.error("Logout all error:", error);
+    res.status(500).json({ message: "Logout failed" });
+  }
+});
 module.exports = router;

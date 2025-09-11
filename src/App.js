@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Public Pages
 import Home from "./pages/Home";
@@ -38,197 +39,228 @@ import StaffProfile from "./pages/Staff/StaffProfile";
 import MerchantDashboard from "./pages/Merchant/MerchantDashboard";
 
 // Auth Components
-import RequireRole from "./components/Auth/RequireRole";
+import ProtectedRoute from "./components/Auth/ProtectedRoute";
+import AuthGuard from "./components/Auth/AuthGuard";
 
 const App = () => {
   return (
-    <Router>
-      <div className="App">
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: "#363636",
-              color: "#fff",
-            },
-            success: {
-              duration: 3000,
-              theme: {
-                primary: "#4ade80",
-              },
-            },
-            error: {
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <Toaster
+            position="top-right"
+            toastOptions={{
               duration: 4000,
-              theme: {
-                primary: "#ef4444",
+              style: {
+                background: "#363636",
+                color: "#fff",
               },
-            },
-          }}
-        />
-
-        <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/"
-            element={
-              <>
-                <Navbar />
-                <ScrollToTop />
-                <Home />
-                <Footer />
-              </>
-            }
+              success: {
+                duration: 3000,
+                theme: {
+                  primary: "#4ade80",
+                },
+              },
+              error: {
+                duration: 4000,
+                theme: {
+                  primary: "#ef4444",
+                },
+              },
+            }}
           />
 
-          <Route
-            path="/pricing"
-            element={
-              <>
-                <Navbar />
-                <ScrollToTop />
-                <Pricing />
-                <Footer />
-              </>
-            }
-          />
+          <Routes>
+            {/* Public Routes */}
+            <Route
+              path="/"
+              element={
+                <>
+                  <Navbar />
+                  <ScrollToTop />
+                  <Home />
+                  <Footer />
+                </>
+              }
+            />
 
-          <Route
-            path="/loans"
-            element={
-              <>
-                <Navbar />
-                <ScrollToTop />
-                <Loans />
-                <Footer />
-              </>
-            }
-          />
+            <Route
+              path="/pricing"
+              element={
+                <>
+                  <Navbar />
+                  <ScrollToTop />
+                  <Pricing />
+                  <Footer />
+                </>
+              }
+            />
 
-          <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route
+              path="/loans"
+              element={
+                <>
+                  <Navbar />
+                  <ScrollToTop />
+                  <Loans />
+                  <Footer />
+                </>
+              }
+            />
 
-          {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
 
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route
-            path="/admin/dashboard/*"
-            element={
-              <RequireRole roles={["admin"]}>
-                <AdminDashboard />
-              </RequireRole>
-            }
-          />
+            {/* Auth Routes - Only show when not authenticated */}
+            <Route 
+              path="/login" 
+              element={
+                <AuthGuard redirectTo="/">
+                  <Login />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <AuthGuard redirectTo="/">
+                  <Register />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/forgot-password" 
+              element={
+                <AuthGuard redirectTo="/">
+                  <ForgotPassword />
+                </AuthGuard>
+              } 
+            />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Aggregator Routes */}
-          <Route
-            path="/aggregator/dashboard"
-            element={
-              <RequireRole roles={["aggregator"]}>
-                <AggregatorDashboard />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/aggregator/dashboard/tasks"
-            element={
-              <RequireRole roles={["aggregator"]}>
-                <AggregatorTasks />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/aggregator/dashboard/disputes"
-            element={
-              <RequireRole roles={["aggregator"]}>
-                <AggregatorDisputes />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/aggregator/dashboard/profile"
-            element={
-              <RequireRole roles={["aggregator"]}>
-                <AggregatorProfile />
-              </RequireRole>
-            }
-          />
+            {/* Admin Routes */}
+            <Route 
+              path="/admin/login" 
+              element={
+                <AuthGuard redirectTo="/admin/dashboard">
+                  <AdminLogin />
+                </AuthGuard>
+              } 
+            />
+            <Route
+              path="/admin/dashboard/*"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Staff Routes (placeholder for now) */}
-          <Route
-            path="/staff/dashboard"
-            element={
-              <RequireRole roles={["staff"]}>
-                <StaffDashboard />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/staff/dashboard/tasks"
-            element={
-              <RequireRole roles={["staff"]}>
-                <StaffTasks />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/staff/dashboard/disputes"
-            element={
-              <RequireRole roles={["staff"]}>
-                <StaffDisputes />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/staff/dashboard/merchants"
-            element={
-              <RequireRole roles={["staff"]}>
-                <StaffMerchants />
-              </RequireRole>
-            }
-          />
-          <Route
-            path="/staff/dashboard/profile"
-            element={
-              <RequireRole roles={["staff"]}>
-                <StaffProfile />
-              </RequireRole>
-            }
-          />
+            {/* Aggregator Routes */}
+            <Route
+              path="/aggregator/dashboard"
+              element={
+                <ProtectedRoute roles={["aggregator"]}>
+                  <AggregatorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/aggregator/dashboard/tasks"
+              element={
+                <ProtectedRoute roles={["aggregator"]}>
+                  <AggregatorTasks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/aggregator/dashboard/disputes"
+              element={
+                <ProtectedRoute roles={["aggregator"]}>
+                  <AggregatorDisputes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/aggregator/dashboard/profile"
+              element={
+                <ProtectedRoute roles={["aggregator"]}>
+                  <AggregatorProfile />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Merchant Routes */}
-          <Route
-            path="/merchant/dashboard"
-            element={
-              <RequireRole roles={["merchant"]}>
-                <MerchantDashboard />
-              </RequireRole>
-            }
-          />
+            {/* Staff Routes */}
+            <Route
+              path="/staff/dashboard"
+              element={
+                <ProtectedRoute roles={["staff"]}>
+                  <StaffDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/dashboard/tasks"
+              element={
+                <ProtectedRoute roles={["staff"]}>
+                  <StaffTasks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/dashboard/disputes"
+              element={
+                <ProtectedRoute roles={["staff"]}>
+                  <StaffDisputes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/dashboard/merchants"
+              element={
+                <ProtectedRoute roles={["staff"]}>
+                  <StaffMerchants />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/dashboard/profile"
+              element={
+                <ProtectedRoute roles={["staff"]}>
+                  <StaffProfile />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Fallback */}
-          <Route
-            path="*"
-            element={
-              <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    Page Not Found
-                  </h2>
-                  <p className="text-gray-600">
-                    The page you're looking for doesn't exist.
-                  </p>
+            {/* Merchant Routes */}
+            <Route
+              path="/merchant/dashboard"
+              element={
+                <ProtectedRoute roles={["merchant"]}>
+                  <MerchantDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Fallback */}
+            <Route
+              path="*"
+              element={
+                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Page Not Found
+                    </h2>
+                    <p className="text-gray-600">
+                      The page you're looking for doesn't exist.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            }
-          />
-        </Routes>
-      </div>
-    </Router>
+              }
+            />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 };
 

@@ -3,11 +3,12 @@ import { useLocation } from "react-router-dom";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { authApi } from "../../api/client";
+import { useAuth } from "../../contexts/AuthContext";
 import Button from "../../components/UI/Button";
 import toast from "react-hot-toast";
 
 const Login = () => {
+  const { login, clearSessionExpired, sessionExpired } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -19,9 +20,16 @@ const Login = () => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const expired = params.get("reason") === "expired";
+  const from = location.state?.from?.pathname || null;
 
   const navigate = useNavigate();
 
+  // Clear session expired flag when component mounts
+  React.useEffect(() => {
+    if (sessionExpired || expired) {
+      clearSessionExpired();
+    }
+  }, [sessionExpired, expired, clearSessionExpired]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -34,34 +42,27 @@ const Login = () => {
     setError("");
 
     try {
-      const response = await authApi.login(formData);
-      // Try both possible token locations
-      const accessToken =
-        response.data?.session?.access_token || response.data?.access_token;
-      // console.log("[DIAGNOSE] Storing token:", accessToken);
-      localStorage.setItem("authToken", accessToken);
-      toast.success("Login successful!");
-      // Fetch user info to get role
-      const meResponse = await authApi.me();
-      const role = meResponse.data.user?.role;
-      switch (role) {
+      const { user } = await login(formData);
+      
+      // Redirect based on role or return to previous page
+      const redirectPath = from || (() => {
+        switch (user.role) {
         case "admin":
-          navigate("/admin/dashboard");
-          break;
+          return "/admin/dashboard";
         case "staff":
-          navigate("/staff/dashboard");
-          break;
+          return "/staff/dashboard";
         case "aggregator":
-          navigate("/aggregator/dashboard");
-          break;
+          return "/aggregator/dashboard";
         case "merchant":
-          navigate("/merchant/dashboard");
-          break;
+          return "/merchant/dashboard";
         default:
-          navigate("/");
-      }
+          return "/";
+        }
+      })();
+      
+      navigate(redirectPath, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -93,9 +94,9 @@ const Login = () => {
             </div>
 
             {/* Error Message */}
-            {(expired || error) && (
+            {(expired || sessionExpired || error) && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
-                {expired
+                {expired || sessionExpired
                   ? "Your session has expired. Please sign in again."
                   : error}
               </div>
