@@ -9,7 +9,7 @@ import OnboardingForm from "../../components/Navbar/OnboardingForm";
 import LoadingSpinner from "../../components/UI/LoadingSpinner";
 import toast from "react-hot-toast";
 
-const AggregatorProfile = () => {
+const StaffProfile = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -26,6 +26,7 @@ const AggregatorProfile = () => {
 
   const [mySubmission, setMySubmission] = useState(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   const protectedFields = ["bvn", "nin", "serialNo"];
 
@@ -66,6 +67,17 @@ const AggregatorProfile = () => {
     }
   };
 
+  const navigateToOnboarding = () => {
+    const initialData = {
+      email: user?.email,
+      username: user?.username,
+      ...(user?.onboardingData || {}),
+    };
+    
+    // Navigate to onboarding page with prefilled data
+    window.location.href = `/onboarding?prefill=${encodeURIComponent(JSON.stringify(initialData))}`;
+  };
+
   const handleBasicSave = async () => {
     try {
       setSaving(true);
@@ -102,14 +114,14 @@ const AggregatorProfile = () => {
 
   if (loading) {
     return (
-      <DashboardLayout userRole="aggregator">
+      <DashboardLayout userRole="staff">
         <LoadingSpinner size="lg" text="Loading profile..." />
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout userRole="aggregator">
+    <DashboardLayout userRole="staff">
       <div className="space-y-8">
         <PageHeader
           title="Profile Management"
@@ -322,151 +334,152 @@ const AggregatorProfile = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {editing ? (
-                      <div className="md:col-span-2">
-                        <OnboardingForm
-                          initialData={
-                            user?.onboardingData || {
-                              email: user?.email,
-                              username: user?.username,
+                      {editing ? (
+                        <div className="md:col-span-2">
+                          <OnboardingForm
+                            initialData={
+                              user?.onboardingData || {
+                                email: user?.email,
+                                username: user?.username,
+                              }
                             }
-                          }
-                          initialFiles={(mySubmission?.files || []).reduce(
-                            (acc, f) => {
-                              acc[f.fieldName] = f.cloudinaryUrl;
-                              return acc;
-                            },
-                            {}
-                          )}
-                          isEdit={true}
-                          protectedFields={protectedFields}
-                          onSaveText={async (textOnly) => {
-                            await usersApi.update("me", {
-                              onboardingData: textOnly,
-                            });
-                            await fetchUserData();
-                            await fetchMySubmission();
-                          }}
-                        />
-
-                        <div className="mt-4">
-                          <label className="block text-sm text-gray-600 mb-2">
-                            Upload additional documents
-                          </label>
-                          <input
-                            type="file"
-                            multiple
-                            onChange={(e) => handleFilesUpload(e.target.files)}
-                            className="block"
-                            disabled={uploadingFiles}
+                            initialFiles={(mySubmission?.files || []).reduce(
+                              (acc, f) => {
+                                acc[f.fieldName] = f.cloudinaryUrl;
+                                return acc;
+                              },
+                              {}
+                            )}
+                            isEdit={true}
+                            protectedFields={protectedFields}
+                            onSaveText={async (textOnly) => {
+                              await usersApi.update("me", {
+                                onboardingData: textOnly,
+                              });
+                              await fetchUserData();
+                              await fetchMySubmission();
+                            }}
                           />
-                          {uploadingFiles && (
-                            <div className="text-sm text-gray-500 mt-2">
-                              Uploading...
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="md:col-span-2 space-y-6">
-                        {/* Basic Information Display */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              First Name
-                            </label>
-                            <div className="text-sm text-gray-700">
-                              {onboardingForm.firstName || "-"}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Last Name
-                            </label>
-                            <div className="text-sm text-gray-700">
-                              {onboardingForm.lastName || "-"}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Gender
-                            </label>
-                            <div className="text-sm text-gray-700">
-                              {onboardingForm.gender || "-"}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              State
-                            </label>
-                            <div className="text-sm text-gray-700">
-                              {onboardingForm.state || "-"}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              LGA
-                            </label>
-                            <div className="text-sm text-gray-700">
-                              {onboardingForm.lga || "-"}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Business Name
-                            </label>
-                            <div className="text-sm text-gray-700">
-                              {onboardingForm.businessName || "-"}
-                            </div>
-                          </div>
-                        </div>
 
-                        {/* Documents Section */}
-                        <div>
-                          <h4 className="text-sm font-semibold mb-2">
-                            Uploaded Documents
-                          </h4>
-                          {mySubmission?.files?.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {mySubmission.files.map((file, idx) => (
-                                <div
-                                  key={idx}
-                                  className="border p-3 rounded-md"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <div className="text-xs text-gray-500">
-                                        {file.fieldName}
-                                      </div>
-                                      <div className="text-sm font-medium">
-                                        {file.originalName}
-                                      </div>
-                                    </div>
-                                    <a
-                                      href={file.cloudinaryUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-primary underline"
-                                    >
-                                      Open
-                                    </a>
-                                  </div>
-                                  <img
-                                    src={file.cloudinaryUrl}
-                                    alt={file.originalName}
-                                    className="w-full h-36 object-cover rounded-md mt-3"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-500">
-                              No documents uploaded yet.
-                            </div>
-                          )}
+                          <div className="mt-4">
+                            <label className="block text-sm text-gray-600 mb-2">
+                              Upload additional documents
+                            </label>
+                            <input
+                              type="file"
+                              multiple
+                              onChange={(e) => handleFilesUpload(e.target.files)}
+                              className="block"
+                              disabled={uploadingFiles}
+                            />
+                            {uploadingFiles && (
+                              <div className="text-sm text-gray-500 mt-2">
+                                Uploading...
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="md:col-span-2 space-y-6">
+                          {/* Basic Information Display */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                First Name
+                              </label>
+                              <div className="text-sm text-gray-700">
+                                {onboardingForm.firstName || "-"}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Last Name
+                              </label>
+                              <div className="text-sm text-gray-700">
+                                {onboardingForm.lastName || "-"}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Gender
+                              </label>
+                              <div className="text-sm text-gray-700">
+                                {onboardingForm.gender || "-"}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                State
+                              </label>
+                              <div className="text-sm text-gray-700">
+                                {onboardingForm.state || "-"}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                LGA
+                              </label>
+                              <div className="text-sm text-gray-700">
+                                {onboardingForm.lga || "-"}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Business Name
+                              </label>
+                              <div className="text-sm text-gray-700">
+                                {onboardingForm.businessName || "-"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Documents Section */}
+                          <div>
+                            <h4 className="text-sm font-semibold mb-2">
+                              Uploaded Documents
+                            </h4>
+                            {mySubmission?.files?.length > 0 ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {mySubmission.files.map((file, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="border p-3 rounded-md"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="text-xs text-gray-500">
+                                          {file.fieldName}
+                                        </div>
+                                        <div className="text-sm font-medium">
+                                          {file.originalName}
+                                        </div>
+                                      </div>
+                                      <a
+                                        href={file.cloudinaryUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-primary underline"
+                                      >
+                                        Open
+                                      </a>
+                                    </div>
+                                    <img
+                                      src={file.cloudinaryUrl}
+                                      alt={file.originalName}
+                                      className="w-full h-36 object-cover rounded-md mt-3"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500">
+                                No documents uploaded yet.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </motion.div>
@@ -478,4 +491,4 @@ const AggregatorProfile = () => {
   );
 };
 
-export default AggregatorProfile;
+export default StaffProfile;

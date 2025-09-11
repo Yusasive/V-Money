@@ -115,6 +115,7 @@ const DashboardLayout = ({ children, userRole }) => {
           { name: "Tasks", href: "/tasks", icon: CheckSquare },
           { name: "Disputes", href: "/disputes", icon: AlertTriangle },
           { name: "Merchants", href: "/merchants", icon: Store },
+          { name: "Profile", href: "/profile", icon: User },
         ];
 
       case "aggregator":

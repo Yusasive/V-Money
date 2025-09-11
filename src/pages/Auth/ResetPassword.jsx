@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiLock, FiCheckCircle, FiEye, FiEyeOff } from "react-icons/fi";
 import { authApi } from "../../api/client";
@@ -6,6 +7,10 @@ import { Link } from "react-router-dom";
 
 // Password reset page styled to match admin visuals
 const ResetPassword = () => {
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const token = urlParams.get('token');
+  
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState("");
@@ -24,20 +29,47 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!token) {
+      setError("Invalid reset token. Please request a new password reset.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await authApi.changePassword({ password });
-      setMessage("Password updated. You can now sign in.");
+      await authApi.resetPassword({ token, password });
+      setMessage("Password reset successful. You can now sign in.");
       setPassword("");
       setConfirm("");
     } catch (e) {
       setError(
-        e.response?.data?.message || e.message || "Failed to update password"
+        e.response?.data?.message || e.message || "Failed to reset password"
       );
     } finally {
       setLoading(false);
     }
   };
+
+  // Show error if no token in URL
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Invalid Reset Link
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            This password reset link is invalid or has expired.
+          </p>
+          <Link
+            to="/forgot-password"
+            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+          >
+            Request New Reset Link
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
@@ -56,6 +88,10 @@ const ResetPassword = () => {
               <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                 Reset Password
               </h1>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 px-4 py-3 rounded-lg mb-6">
+              Enter your new password below to complete the reset process.
             </div>
 
             {/* Redirect hint after success */}
@@ -129,7 +165,7 @@ const ResetPassword = () => {
                 disabled={loading}
                 className="w-full bg-primary text-white px-4 py-2 rounded shadow hover:shadow-md transition disabled:opacity-50"
               >
-                {loading ? "Updating..." : "Update Password"}
+                {loading ? "Resetting..." : "Reset Password"}
               </button>
             </form>
           </div>

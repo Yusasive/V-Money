@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const User = require("../models/User");
 const { authenticateToken } = require("../middleware/auth");
-const { sendStatusEmail } = require("../config/email");
+const { sendStatusEmail, sendPasswordResetEmail } = require("../config/email");
 
 const router = express.Router();
 
@@ -222,13 +222,11 @@ router.post(
       user.passwordResetExpires = Date.now() + 3600000; // 1 hour
       await user.save();
 
-      // Send reset email
+      // Send password reset email
       try {
-        await sendStatusEmail({
+        await sendPasswordResetEmail({
           to: email,
-          status: "password_reset",
-          notes: `Click this link to reset your password: ${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
-          formType: "password reset",
+          resetToken,
           name: user.fullName,
         });
       } catch (emailError) {

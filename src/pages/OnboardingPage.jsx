@@ -10,12 +10,27 @@ import toast from "react-hot-toast";
 export default function OnboardingPage() {
   const location = useLocation();
   const routeInitial = location.state?.initialData || {};
+  
+  // Check for URL parameters for prefill data
+  const urlParams = new URLSearchParams(location.search);
+  const prefillParam = urlParams.get('prefill');
+  let urlPrefillData = {};
+  
+  if (prefillParam) {
+    try {
+      urlPrefillData = JSON.parse(decodeURIComponent(prefillParam));
+    } catch (e) {
+      console.error('Failed to parse prefill data from URL:', e);
+    }
+  }
+  
+  const combinedInitialData = { ...routeInitial, ...urlPrefillData };
   const [initialData, setInitialData] = useState(routeInitial);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // If route didn't pass initialData, try to fetch current user to prefill
-    if (!routeInitial || Object.keys(routeInitial).length === 0) {
+    if (!combinedInitialData || Object.keys(combinedInitialData).length === 0) {
       let mounted = true;
       (async () => {
         try {
@@ -26,6 +41,7 @@ export default function OnboardingPage() {
             setInitialData({
               email: user.email,
               username: user.username,
+              ...urlPrefillData,
             });
           }
         } catch (err) {
@@ -42,8 +58,10 @@ export default function OnboardingPage() {
       return () => {
         mounted = false;
       };
+    } else {
+      setInitialData(combinedInitialData);
     }
-  }, [routeInitial]);
+  }, [routeInitial, prefillParam]);
 
   return (
     <>

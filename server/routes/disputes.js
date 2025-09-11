@@ -2,6 +2,7 @@ const express = require("express");
 const Dispute = require("../models/Dispute");
 const User = require("../models/User");
 const { authenticateToken, requireRoles } = require("../middleware/auth");
+const { sendDisputeNotificationEmail } = require("../config/email");
 
 const router = express.Router();
 
@@ -39,6 +40,19 @@ router.post(
         { path: "raisedAgainst", select: "fullName email username" },
         { path: "createdBy", select: "fullName email username" },
       ]);
+
+      // Send email notification to the user the dispute is raised against
+      try {
+        await sendDisputeNotificationEmail({
+          to: targetUser.email,
+          disputeTitle: title,
+          disputeDescription: description,
+          raisedBy: req.user.fullName || req.user.username,
+          name: targetUser.fullName,
+        });
+      } catch (emailError) {
+        console.error("Failed to send dispute notification email:", emailError);
+      }
 
       res.status(201).json({
         message: "Dispute created successfully",

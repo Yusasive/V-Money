@@ -33,6 +33,7 @@ import StaffDashboard from "./pages/Staff/StaffDashboard";
 import StaffTasks from "./pages/Staff/StaffTasks";
 import StaffDisputes from "./pages/Staff/StaffDisputes";
 import StaffMerchants from "./pages/Staff/StaffMerchants";
+import StaffProfile from "./pages/Staff/StaffProfile";
 
 // Merchant Pages
 import MerchantDashboard from "./pages/Merchant/MerchantDashboard";
@@ -188,6 +189,14 @@ const App = () => {
             element={
               <RequireRole roles={["staff"]}>
                 <StaffMerchants />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/staff/dashboard/profile"
+            element={
+              <RequireRole roles={["staff"]}>
+                <StaffProfile />
               </RequireRole>
             }
           />

@@ -20,6 +20,9 @@ const FormSubmissions = () => {
   const [actionNotes, setActionNotes] = useState("");
   const [statusNotice, setStatusNotice] = useState(null); 
   const [updatingStatus, setUpdatingStatus] = useState(null);
+  const [editingSubmission, setEditingSubmission] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchSubmissions = useCallback(async () => {
     try {
@@ -105,6 +108,33 @@ const FormSubmissions = () => {
   };
 
   const cancelDelete = () => setConfirmDeleteId(null);
+
+  const handleEditSubmission = (submission) => {
+    setEditingSubmission({ ...submission });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSubmission) return;
+    
+    try {
+      setSavingEdit(true);
+      await formsApi.update(editingSubmission._id, {
+        data: editingSubmission.data,
+        status: editingSubmission.status,
+        notes: editingSubmission.notes,
+      });
+      toast.success("Submission updated successfully");
+      setShowEditModal(false);
+      setEditingSubmission(null);
+      await fetchSubmissions();
+    } catch (error) {
+      console.error("Failed to update submission:", error);
+      toast.error("Failed to update submission");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -243,6 +273,12 @@ const FormSubmissions = () => {
                           className="text-primary hover:text-blue-700 text-xs lg:text-sm"
                         >
                           View
+                        </button>
+                        <button
+                          onClick={() => handleEditSubmission(submission)}
+                          className="text-green-600 hover:text-green-900 text-xs lg:text-sm"
+                        >
+                          Edit
                         </button>
                         <button
                           onClick={() => deleteSubmission(submission._id)}
@@ -571,6 +607,198 @@ const FormSubmissions = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Edit Submission Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingSubmission(null);
+        }}
+        title="Edit Form Submission"
+        size="xl"
+      >
+        {editingSubmission && (
+          <div className="space-y-6">
+            {/* Status and Notes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Status
+                </label>
+                <select
+                  value={editingSubmission.status}
+                  onChange={(e) =>
+                    setEditingSubmission({
+                      ...editingSubmission,
+                      status: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="reviewed">Reviewed</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Form Type
+                </label>
+                <select
+                  value={editingSubmission.formType}
+                  onChange={(e) =>
+                    setEditingSubmission({
+                      ...editingSubmission,
+                      formType: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="onboarding">Onboarding</option>
+                  <option value="contact">Contact</option>
+                  <option value="loan">Loan</option>
+                  <option value="support">Support</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Admin Notes
+              </label>
+              <textarea
+                value={editingSubmission.notes || ""}
+                onChange={(e) =>
+                  setEditingSubmission({
+                    ...editingSubmission,
+                    notes: e.target.value,
+                  })
+                }
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Add notes for this submission"
+              />
+            </div>
+
+            {/* Editable Form Data */}
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Form Data
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(editingSubmission.data || {}).map(([key, value]) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                    </label>
+                    {key === 'address' || key === 'businessAddress' ? (
+                      <textarea
+                        value={value || ""}
+                        onChange={(e) =>
+                          setEditingSubmission({
+                            ...editingSubmission,
+                            data: {
+                              ...editingSubmission.data,
+                              [key]: e.target.value,
+                            },
+                          })
+                        }
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    ) : key === 'gender' ? (
+                      <select
+                        value={value || ""}
+                        onChange={(e) =>
+                          setEditingSubmission({
+                            ...editingSubmission,
+                            data: {
+                              ...editingSubmission.data,
+                              [key]: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
+                        value={value || ""}
+                        onChange={(e) =>
+                          setEditingSubmission({
+                            ...editingSubmission,
+                            data: {
+                              ...editingSubmission.data,
+                              [key]: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Files Display (Read-only) */}
+            {editingSubmission.files?.length > 0 && (
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Uploaded Files
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {editingSubmission.files.map((file, index) => (
+                    <div key={index} className="border p-4 rounded-md">
+                      <p className="font-medium">{file.fieldName}</p>
+                      <p className="text-sm text-gray-600">{file.originalName}</p>
+                      <a
+                        href={file.cloudinaryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        <img
+                          className="w-full h-32 object-cover rounded-md mt-2"
+                          src={file.cloudinaryUrl}
+                          alt={file.originalName}
+                        />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingSubmission(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                loading={savingEdit}
+                onClick={handleSaveEdit}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </motion.div>
   );
 };

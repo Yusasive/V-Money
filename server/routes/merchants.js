@@ -4,6 +4,7 @@ const Merchant = require("../models/Merchant");
 const MerchantTransaction = require("../models/MerchantTransaction");
 const User = require("../models/User");
 const { authenticateToken, requireRoles } = require("../middleware/auth");
+const { sendMerchantCreationEmail } = require("../config/email");
 
 const router = express.Router();
 
@@ -63,6 +64,18 @@ router.post(
 
       await merchant.save();
       await merchant.populate("userId", "fullName email");
+
+      // Send email notification to the merchant
+      try {
+        await sendMerchantCreationEmail({
+          to: email,
+          businessName,
+          username,
+          name: firstName + (lastName ? ` ${lastName}` : ''),
+        });
+      } catch (emailError) {
+        console.error("Failed to send merchant creation email:", emailError);
+      }
 
       res.status(201).json({
         message: "Merchant created successfully",

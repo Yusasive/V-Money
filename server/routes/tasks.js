@@ -2,6 +2,7 @@ const express = require("express");
 const Task = require("../models/Task");
 const User = require("../models/User");
 const { authenticateToken, requireRoles } = require("../middleware/auth");
+const { sendTaskAssignmentEmail } = require("../config/email");
 
 const router = express.Router();
 
@@ -53,6 +54,20 @@ router.post(
         { path: "assignedTo", select: "fullName email username" },
         { path: "createdBy", select: "fullName email username" },
       ]);
+
+      // Send email notification to assigned user
+      try {
+        await sendTaskAssignmentEmail({
+          to: assignee.email,
+          taskTitle: title,
+          taskDescription: description,
+          assignedBy: req.user.fullName || req.user.username,
+          dueDate: due_date,
+          name: assignee.fullName,
+        });
+      } catch (emailError) {
+        console.error("Failed to send task assignment email:", emailError);
+      }
 
       res.status(201).json({
         message: "Task created successfully",

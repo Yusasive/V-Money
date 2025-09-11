@@ -158,16 +158,20 @@ router.patch(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const { status, notes } = req.body;
+      const { status, notes, data, formType } = req.body;
+
+      const updateData = {};
+      if (status !== undefined) updateData.status = status;
+      if (notes !== undefined) updateData.notes = notes;
+      if (data !== undefined) updateData.data = data;
+      if (formType !== undefined) updateData.formType = formType;
+      
+      updateData.reviewedBy = req.user._id;
+      updateData.reviewedAt = new Date();
 
       const submission = await FormSubmission.findByIdAndUpdate(
         id,
-        {
-          status,
-          notes,
-          reviewedBy: req.user._id,
-          reviewedAt: new Date(),
-        },
+        updateData,
         { new: true }
       ).populate("reviewedBy", "fullName email");
 

@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { auth, adminAuth } = require("../middleware/auth");
+const { sendPasswordResetEmail } = require("../config/email");
 
 // Allowed origins
 const allowedOrigins = [
@@ -225,8 +226,16 @@ module.exports = async (req, res) => {
       user.passwordResetExpires = Date.now() + 3600000; // 1 hour
       await user.save();
 
-      // Send reset email (implement email service)
-      // await sendResetEmail(user.email, resetToken);
+      // Send password reset email
+      try {
+        await sendPasswordResetEmail({
+          to: user.email,
+          resetToken,
+          name: user.fullName,
+        });
+      } catch (emailError) {
+        console.error("Failed to send password reset email:", emailError);
+      }
 
       return send(req, res, 200, { 
         message: 'If an account with that email exists, a reset link has been sent.' 
