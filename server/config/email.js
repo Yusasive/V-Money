@@ -1,6 +1,5 @@
 const nodemailer = require("nodemailer");
 const dns = require("dns");
-const User = require("../models/User");
 
 // Prefer IPv4 address resolution where available to avoid ENETUNREACH when system
 // has no IPv6 connectivity but DNS returns IPv6 records.
@@ -28,7 +27,8 @@ function createTransporter() {
     String(process.env.MAIL_SECURE || "").toLowerCase() === "true" ||
     port === 465;
 
-  return nodemailer.createTransporter({
+  // Standard SMTP transport (note: nodemailer method is createTransport, not createTransporter)
+  return nodemailer.createTransport({
     host: process.env.MAIL_HOST || "smtp.hostinger.com",
     port,
     secure,
@@ -199,7 +199,14 @@ If you didn't request this reset, please ignore this email.
 }
 
 // Send task assignment notification
-async function sendTaskAssignmentEmail({ to, taskTitle, taskDescription, assignedBy, dueDate, name }) {
+async function sendTaskAssignmentEmail({
+  to,
+  taskTitle,
+  taskDescription,
+  assignedBy,
+  dueDate,
+  name,
+}) {
   if (!to) return;
 
   const brandColor = "#2563eb";
@@ -225,10 +232,10 @@ async function sendTaskAssignmentEmail({ to, taskTitle, taskDescription, assigne
           
           <div style="margin:16px 0; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
             <h3 style="margin:0 0 8px 0; color:#0f172a; font-size:18px;">${taskTitle}</h3>
-            ${taskDescription ? `<p style="margin:0 0 12px 0; color:#334155;">${taskDescription}</p>` : ''}
+            ${taskDescription ? `<p style="margin:0 0 12px 0; color:#334155;">${taskDescription}</p>` : ""}
             <div style="font-size:14px; color:#64748b;">
               <p style="margin:4px 0;">Assigned by: ${assignedBy}</p>
-              ${dueDate ? `<p style="margin:4px 0;">Due date: ${new Date(dueDate).toLocaleDateString()}</p>` : ''}
+              ${dueDate ? `<p style="margin:4px 0;">Due date: ${new Date(dueDate).toLocaleDateString()}</p>` : ""}
             </div>
           </div>
           
@@ -253,7 +260,13 @@ async function sendTaskAssignmentEmail({ to, taskTitle, taskDescription, assigne
 }
 
 // Send dispute notification
-async function sendDisputeNotificationEmail({ to, disputeTitle, disputeDescription, raisedBy, name }) {
+async function sendDisputeNotificationEmail({
+  to,
+  disputeTitle,
+  disputeDescription,
+  raisedBy,
+  name,
+}) {
   if (!to) return;
 
   const brandColor = "#2563eb";
@@ -359,10 +372,10 @@ async function sendMerchantCreationEmail({ to, businessName, username, name }) {
   });
 }
 
-module.exports = { 
-  sendStatusEmail, 
-  sendPasswordResetEmail, 
-  sendTaskAssignmentEmail, 
+module.exports = {
+  sendStatusEmail,
+  sendPasswordResetEmail,
+  sendTaskAssignmentEmail,
   sendDisputeNotificationEmail,
-  sendMerchantCreationEmail 
+  sendMerchantCreationEmail,
 };

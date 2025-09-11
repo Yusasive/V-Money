@@ -9,7 +9,6 @@ import Loans from "./pages/Loans/Loans";
 import Navbar from "./components/Navbar/Navbar";
 import Footer from "./pages/Footer";
 import ScrollToTop from "./ScrollToTop";
-import OnboardingForm from "./components/Navbar/OnboardingForm";
 import OnboardingPage from "./pages/OnboardingPage";
 
 // Auth Pages

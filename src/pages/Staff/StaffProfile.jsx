@@ -26,7 +26,7 @@ const StaffProfile = () => {
 
   const [mySubmission, setMySubmission] = useState(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  // removed unused showOnboardingModal state
 
   const protectedFields = ["bvn", "nin", "serialNo"];
 
@@ -62,6 +62,10 @@ const StaffProfile = () => {
       const res = await formsApi.getMine();
       const payload = res.data?.submission || res.data;
       setMySubmission(payload || null);
+      // If user document doesn't yet have onboardingData but we have a submission, hydrate display form
+      if (!user?.onboardingData && payload?.data) {
+        setOnboardingForm((prev) => ({ ...prev, ...(payload.data || {}) }));
+      }
     } catch (e) {
       setMySubmission(null);
     }
@@ -73,7 +77,7 @@ const StaffProfile = () => {
       username: user?.username,
       ...(user?.onboardingData || {}),
     };
-    
+
     // Navigate to onboarding page with prefilled data
     window.location.href = `/onboarding?prefill=${encodeURIComponent(JSON.stringify(initialData))}`;
   };
@@ -164,6 +168,78 @@ const StaffProfile = () => {
             </div>
           }
         />
+
+        {/* Persistent Onboarding Banner (visible until approved) */}
+        {(() => {
+          const status = mySubmission?.status;
+          const needsOnboarding = !mySubmission && !user?.onboardingData;
+          const show = needsOnboarding || (status && status !== "approved");
+          if (!show) return null;
+
+          let toneClasses = "";
+          let title = "";
+          let message = "";
+          let cta = "";
+
+          if (needsOnboarding) {
+            toneClasses =
+              "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700";
+            title = "Onboarding Required";
+            message =
+              "Complete your onboarding to unlock all platform features.";
+            cta = "Start Onboarding";
+          } else if (status === "pending") {
+            toneClasses =
+              "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-800";
+            title = "Onboarding Pending Review";
+            message =
+              "Your submission is under review. You will be notified once processed.";
+            cta = "View Submission";
+          } else if (status === "reviewed") {
+            toneClasses =
+              "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700";
+            title = "Onboarding Reviewed";
+            message = "Your submission was reviewed and awaits final decision.";
+            cta = "View Submission";
+          } else if (status === "rejected") {
+            toneClasses =
+              "bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700";
+            title = "Onboarding Rejected";
+            message =
+              "Please correct issues and resubmit your onboarding information.";
+            cta = "Resubmit Onboarding";
+          }
+
+          return (
+            <div
+              role="alert"
+              className={`rounded-xl border p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-sm ${toneClasses}`}
+            >
+              <div className="space-y-1">
+                <h4 className="font-semibold text-sm text-gray-900 dark:text-white tracking-wide">
+                  {title}
+                </h4>
+                <p className="text-xs md:text-sm text-gray-700 dark:text-gray-300 max-w-prose">
+                  {message}
+                </p>
+                {status && (
+                  <div className="text-[11px] uppercase tracking-wide font-medium text-gray-500 dark:text-gray-400 pt-1">
+                    Status: {status}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={status === "rejected" ? "danger" : "primary"}
+                  onClick={navigateToOnboarding}
+                >
+                  {cta}
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="border-b border-gray-200 dark:border-gray-700">
@@ -287,7 +363,7 @@ const StaffProfile = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
-                {!user?.onboardingData && !editing ? (
+                {!user?.onboardingData && !mySubmission && !editing ? (
                   <div className="text-center py-12">
                     <Edit className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
@@ -314,22 +390,22 @@ const StaffProfile = () => {
                             Onboarding Status
                           </h4>
                           <p className="text-sm text-blue-700 dark:text-blue-300">
-                            {mySubmission?.status === 'approved' 
-                              ? 'Your onboarding has been approved'
-                              : mySubmission?.status === 'pending'
-                              ? 'Your onboarding is pending review'
-                              : mySubmission?.status === 'rejected'
-                              ? 'Your onboarding was rejected - please resubmit'
-                              : 'Onboarding information available'}
+                            {mySubmission?.status === "approved"
+                              ? "Your onboarding has been approved"
+                              : mySubmission?.status === "pending"
+                                ? "Your onboarding is pending review"
+                                : mySubmission?.status === "rejected"
+                                  ? "Your onboarding was rejected - please resubmit"
+                                  : "Onboarding information available"}
                           </p>
                         </div>
-                        <Button
+                        {/* <Button
                           variant="outline"
                           size="sm"
                           onClick={navigateToOnboarding}
                         >
                           Update Onboarding
-                        </Button>
+                        </Button> */}
                       </div>
                     </div>
 
@@ -368,7 +444,9 @@ const StaffProfile = () => {
                             <input
                               type="file"
                               multiple
-                              onChange={(e) => handleFilesUpload(e.target.files)}
+                              onChange={(e) =>
+                                handleFilesUpload(e.target.files)
+                              }
                               className="block"
                               disabled={uploadingFiles}
                             />

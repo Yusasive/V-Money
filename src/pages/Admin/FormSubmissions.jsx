@@ -4,6 +4,8 @@ import { FileText } from "lucide-react";
 import PageHeader from "../../components/UI/PageHeader";
 import Button from "../../components/UI/Button";
 import { formsApi } from "../../api/client";
+import { toast } from "react-hot-toast";
+import Modal from "../../components/UI/Modal";
 
 const FormSubmissions = () => {
   const [submissions, setSubmissions] = useState([]);
@@ -18,7 +20,7 @@ const FormSubmissions = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [actionNotes, setActionNotes] = useState("");
-  const [statusNotice, setStatusNotice] = useState(null); 
+  const [statusNotice, setStatusNotice] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -116,7 +118,7 @@ const FormSubmissions = () => {
 
   const handleSaveEdit = async () => {
     if (!editingSubmission) return;
-    
+
     try {
       setSavingEdit(true);
       await formsApi.update(editingSubmission._id, {
@@ -179,7 +181,9 @@ const FormSubmissions = () => {
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-700 flex flex-wrap gap-4 items-center">
         <div className="space-y-1">
-          <label className="text-xs text-gray-500 dark:text-gray-400">Status</label>
+          <label className="text-xs text-gray-500 dark:text-gray-400">
+            Status
+          </label>
           <select
             value={filters.status}
             onChange={(e) =>
@@ -241,7 +245,9 @@ const FormSubmissions = () => {
                   <tr
                     key={submission._id}
                     className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition ${
-                      i % 2 === 0 ? "bg-gray-50/30 dark:bg-gray-900/30" : "bg-white dark:bg-gray-800"
+                      i % 2 === 0
+                        ? "bg-gray-50/30 dark:bg-gray-900/30"
+                        : "bg-white dark:bg-gray-800"
                     }`}
                   >
                     <td className="px-3 lg:px-6 py-4">
@@ -657,9 +663,6 @@ const FormSubmissions = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="onboarding">Onboarding</option>
-                  <option value="contact">Contact</option>
-                  <option value="loan">Loan</option>
-                  <option value="support">Support</option>
                 </select>
               </div>
             </div>
@@ -688,64 +691,74 @@ const FormSubmissions = () => {
                 Form Data
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(editingSubmission.data || {}).map(([key, value]) => (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </label>
-                    {key === 'address' || key === 'businessAddress' ? (
-                      <textarea
-                        value={value || ""}
-                        onChange={(e) =>
-                          setEditingSubmission({
-                            ...editingSubmission,
-                            data: {
-                              ...editingSubmission.data,
-                              [key]: e.target.value,
-                            },
-                          })
-                        }
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    ) : key === 'gender' ? (
-                      <select
-                        value={value || ""}
-                        onChange={(e) =>
-                          setEditingSubmission({
-                            ...editingSubmission,
-                            data: {
-                              ...editingSubmission.data,
-                              [key]: e.target.value,
-                            },
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      >
-                        <option value="">Select...</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
-                      </select>
-                    ) : (
-                      <input
-                        type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
-                        value={value || ""}
-                        onChange={(e) =>
-                          setEditingSubmission({
-                            ...editingSubmission,
-                            data: {
-                              ...editingSubmission.data,
-                              [key]: e.target.value,
-                            },
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    )}
-                  </div>
-                ))}
+                {Object.entries(editingSubmission.data || {}).map(
+                  ([key, value]) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize">
+                        {key.replace(/([A-Z])/g, " $1").trim()}
+                      </label>
+                      {key === "address" || key === "businessAddress" ? (
+                        <textarea
+                          value={value || ""}
+                          onChange={(e) =>
+                            setEditingSubmission({
+                              ...editingSubmission,
+                              data: {
+                                ...editingSubmission.data,
+                                [key]: e.target.value,
+                              },
+                            })
+                          }
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      ) : key === "gender" ? (
+                        <select
+                          value={value || ""}
+                          onChange={(e) =>
+                            setEditingSubmission({
+                              ...editingSubmission,
+                              data: {
+                                ...editingSubmission.data,
+                                [key]: e.target.value,
+                              },
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        >
+                          <option value="">Select...</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                          <option value="Prefer not to say">
+                            Prefer not to say
+                          </option>
+                        </select>
+                      ) : (
+                        <input
+                          type={
+                            key === "email"
+                              ? "email"
+                              : key === "phone"
+                                ? "tel"
+                                : "text"
+                          }
+                          value={value || ""}
+                          onChange={(e) =>
+                            setEditingSubmission({
+                              ...editingSubmission,
+                              data: {
+                                ...editingSubmission.data,
+                                [key]: e.target.value,
+                              },
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      )}
+                    </div>
+                  )
+                )}
               </div>
             </div>
 
@@ -759,7 +772,9 @@ const FormSubmissions = () => {
                   {editingSubmission.files.map((file, index) => (
                     <div key={index} className="border p-4 rounded-md">
                       <p className="font-medium">{file.fieldName}</p>
-                      <p className="text-sm text-gray-600">{file.originalName}</p>
+                      <p className="text-sm text-gray-600">
+                        {file.originalName}
+                      </p>
                       <a
                         href={file.cloudinaryUrl}
                         target="_blank"

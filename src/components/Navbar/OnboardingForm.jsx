@@ -52,15 +52,27 @@ export default function OnboardingForm({
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("onboardingForm");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setFormData((prev) => ({ ...prev, ...parsed }));
-      } else if (initialData && Object.keys(initialData).length) {
-        // prefill from passed initialData (email/username or full onboardingData)
-        setFormData((prev) => ({ ...prev, ...initialData }));
+      const savedRaw = localStorage.getItem("onboardingForm");
+      let saved = {};
+      if (savedRaw) {
+        try {
+          saved = JSON.parse(savedRaw) || {};
+        } catch {
+          saved = {};
+        }
       }
+      // Merge with priority to non-empty values from initialData so URL / routed prefill isn't ignored
+      const merged = { ...saved };
+      if (initialData && Object.keys(initialData).length) {
+        Object.entries(initialData).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== "") {
+            merged[k] = v; // override saved if incoming value is meaningful
+          }
+        });
+      }
+      setFormData((prev) => ({ ...prev, ...merged }));
     } catch {}
+    // We only want to respond when initialData changes externally
   }, [initialData]);
 
   // Initialize previews from any provided initialFiles (fieldName -> url)

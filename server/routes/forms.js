@@ -3,25 +3,39 @@ const FormSubmission = require("../models/FormSubmission");
 const { authenticateToken, requireRoles } = require("../middleware/auth");
 const { upload } = require("../config/cloudinary");
 const { sendStatusEmail } = require("../config/email");
+const User = require("../models/User");
 
 const router = express.Router();
 
-// Get my latest form submission
+// Consolidated: Get current user's latest onboarding (or any) submission
 router.get("/mine/latest", authenticateToken, async (req, res) => {
   try {
-    const submission = await FormSubmission.findOne({
-      userId: req.user.id,
-    })
-      .sort({ createdAt: -1 })
-      .populate("reviewedBy", "fullName email");
+    const userId = req.user?.id;
+    const userEmail = req.user?.email;
 
-    if (!submission) {
-      return res.status(404).json({ message: "No submissions found" });
+    let submission = null;
+    if (userId) {
+      submission = await FormSubmission.findOne({ userId })
+        .sort({ createdAt: -1 })
+        .populate("reviewedBy", "fullName email");
+    }
+    // Fallback by email & onboarding type if none tied by userId
+    if (!submission && userEmail) {
+      submission = await FormSubmission.findOne({
+        formType: "onboarding",
+        "data.email": userEmail,
+      })
+        .sort({ createdAt: -1 })
+        .populate("reviewedBy", "fullName email");
     }
 
-    res.json(submission);
+    if (!submission) {
+      return res.status(404).json({ message: "No submission found" });
+    }
+
+    res.json({ submission });
   } catch (error) {
-    console.error("Get latest submission error:", error);
+    console.error("Get my latest submission error:", error);
     res.status(500).json({ message: "Failed to fetch submission" });
   }
 });
@@ -126,30 +140,6 @@ router.get(
   }
 );
 
-// Get current user's latest onboarding submission
-router.get("/mine/latest", authenticateToken, async (req, res) => {
-  try {
-    const email = req.user?.email;
-    if (!email) return res.status(400).json({ message: "No email on user" });
-
-    const submission = await FormSubmission.findOne({
-      formType: "onboarding",
-      "data.email": email,
-    }).sort({ createdAt: -1 });
-
-    if (!submission) {
-      return res
-        .status(404)
-        .json({ message: "No onboarding submission found" });
-    }
-
-    res.json({ submission });
-  } catch (error) {
-    console.error("Get my submission error:", error);
-    res.status(500).json({ message: "Failed to fetch submission" });
-  }
-});
-
 // Update form submission status
 router.patch(
   "/:id",
@@ -165,7 +155,7 @@ router.patch(
       if (notes !== undefined) updateData.notes = notes;
       if (data !== undefined) updateData.data = data;
       if (formType !== undefined) updateData.formType = formType;
-      
+
       updateData.reviewedBy = req.user._id;
       updateData.reviewedAt = new Date();
 
@@ -205,10 +195,36 @@ router.patch(
         }
       }
 
-      res.json({
-        submission,
-        email: emailResult,
-      });
+      // If approved onboarding, persist onboardingData to user record
+      if (
+        submission &&
+        submission.formType === "onboarding" &&
+        submission.status === "approved"
+      ) {
+        try {
+          // Prefer linking by userId if stored; fallback to email inside form data
+          const userQuery = submission.userId
+            ? { _id: submission.userId }
+            : submission.data?.email
+              ? { email: submission.data.email }
+              : null;
+
+          if (userQuery) {
+            await User.findOneAndUpdate(
+              userQuery,
+              {
+                onboardingData: submission.data,
+                status: "approved", // ensure status reflects approval
+              },
+              { new: true }
+            );
+          }
+        } catch (syncErr) {
+          console.error("Failed to sync onboarding data to user:", syncErr);
+        }
+      }
+
+      res.json({ submission, email: emailResult });
     } catch (error) {
       console.error("Update submission error:", error);
       res.status(500).json({ message: "Failed to update submission" });
