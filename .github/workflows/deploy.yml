@@ -41,3 +41,8 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./build/     
           server-dir: files/public_html/
+
+          # 🐛 Debug: List files after deploy
+      - name: List deployed files
+        run: |
+          curl -u "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" ftp://${{ secrets.FTP_SERVER }}/files/public_html/ --list-only
