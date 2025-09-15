@@ -82,11 +82,15 @@ const AggregatorDashboard = () => {
     try {
       const res = await authApi.me();
       setMe(res.data.user || res.data);
-      try {
-        const subRes = await formsApi.getMine();
-        setMySubmission(subRes.data.submission || subRes.data);
-      } catch (e) {
+
+      // Get form submission - this won't throw for 404 errors anymore
+      const subRes = await formsApi.getMine();
+
+      // If it's a 404, the submission is null
+      if (subRes.status === 404) {
         setMySubmission(null);
+      } else {
+        setMySubmission(subRes.data.submission || subRes.data);
       }
     } catch (error) {
       console.error("Failed to load user for dashboard", error);

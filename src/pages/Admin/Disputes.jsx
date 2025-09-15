@@ -265,7 +265,7 @@ const Disputes = () => {
                 <div className="space-y-3">
                   {disputes.map((d) => (
                     <div
-                      key={d.id}
+                      key={d._id || d.id}
                       className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-900"
                     >
                       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">

@@ -2,80 +2,41 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Merchant = require("../models/Merchant");
 const MerchantTransaction = require("../models/MerchantTransaction");
-const User = require("../models/User");
 const { authenticateToken, requireRoles } = require("../middleware/auth");
-const { sendMerchantCreationEmail } = require("../config/email");
 
 const router = express.Router();
 
-// Create merchant (Staff/Admin)
+// Create merchant (Staff/Admin) — minimal: only username required
 router.post(
   "/",
   authenticateToken,
   requireRoles(["staff", "admin"]),
   async (req, res) => {
     try {
-      const {
-        username,
-        businessName,
-        email,
-        phone,
-        address,
-        businessAddress,
-        firstName,
-        middleName,
-        lastName,
-        gender,
-        state,
-        lga,
-        bvn,
-        nin,
-        serialNo,
-        userId,
-      } = req.body;
+      const { username } = req.body;
 
-      // Check if merchant already exists
-      const existingMerchant = await Merchant.findOne({
-        $or: [{ username }, { email }, { userId }],
-      });
+      if (!username || typeof username !== "string" || !username.trim()) {
+        return res.status(400).json({ message: "Username is required" });
+      }
 
+      // Ensure username format (letters, numbers, underscores, hyphens)
+      const uname = username.trim();
+      if (!/^[a-zA-Z0-9_-]{3,30}$/.test(uname)) {
+        return res.status(400).json({
+          message:
+            "Username must be 3-30 chars and contain letters, numbers, _ or -",
+        });
+      }
+
+      // Check if merchant username already exists
+      const existingMerchant = await Merchant.findOne({ username: uname });
       if (existingMerchant) {
         return res.status(400).json({ message: "Merchant already exists" });
       }
 
-      const merchant = new Merchant({
-        userId,
-        username,
-        businessName,
-        email,
-        phone,
-        address,
-        businessAddress,
-        firstName,
-        middleName,
-        lastName,
-        gender,
-        state,
-        lga,
-        bvn,
-        nin,
-        serialNo,
-      });
-
+      // Create minimal merchant
+      const merchant = new Merchant({ username: uname });
       await merchant.save();
-      await merchant.populate("userId", "fullName email");
-
-      // Send email notification to the merchant
-      try {
-        await sendMerchantCreationEmail({
-          to: email,
-          businessName,
-          username,
-          name: firstName + (lastName ? ` ${lastName}` : ''),
-        });
-      } catch (emailError) {
-        console.error("Failed to send merchant creation email:", emailError);
-      }
 
       res.status(201).json({
         message: "Merchant created successfully",
@@ -95,7 +56,7 @@ router.get(
   requireRoles(["staff", "admin"]),
   async (req, res) => {
     try {
-      const { page = 1, limit = 50, search } = req.query;
+      const { page = 1, limit = 20, search } = req.query;
       const query = {};
       if (search) {
         query.$or = [
@@ -250,6 +211,41 @@ router.patch(
   }
 );
 
+// Delete merchant (Admin only) — cascades transactions
+router.delete(
+  "/:id",
+  authenticateToken,
+  requireRoles(["admin"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "Invalid merchant id" });
+      }
+
+      // Ensure merchant exists
+      const merchant = await Merchant.findById(id);
+      if (!merchant) {
+        return res.status(404).json({ message: "Merchant not found" });
+      }
+
+      // Delete related transactions
+      const txResult = await MerchantTransaction.deleteMany({ merchantId: id });
+
+      // Delete merchant
+      await Merchant.findByIdAndDelete(id);
+
+      res.json({
+        message: "Merchant deleted successfully",
+        deletedTransactions: txResult.deletedCount || 0,
+      });
+    } catch (error) {
+      console.error("Delete merchant error:", error);
+      res.status(500).json({ message: "Failed to delete merchant" });
+    }
+  }
+);
+
 // Record daily transactions (Staff/Admin)
 router.post(
   "/:id/transactions",
@@ -276,31 +272,89 @@ router.post(
         return res.status(404).json({ message: "Merchant not found" });
       }
 
-      const transaction = new MerchantTransaction({
-        merchantId: id,
-        transactionDate: new Date(txn_date),
-        transactionCount: parseInt(txn_count, 10),
-        recordedBy: req.user._id,
-        notes: notes || null,
-      });
+      // Normalize input
+      const count = parseInt(txn_count, 10);
+      if (Number.isNaN(count) || count < 0) {
+        return res
+          .status(400)
+          .json({ message: "txn_count must be a non-negative integer" });
+      }
 
-      await transaction.save();
+      const date = new Date(txn_date);
+
+      // Upsert daily record by merchant + date
+      const updated = await MerchantTransaction.findOneAndUpdate(
+        { merchantId: id, transactionDate: date },
+        {
+          $set: {
+            merchantId: id,
+            transactionDate: date,
+            transactionCount: count,
+            notes: notes || null,
+            recordedBy: req.user._id,
+          },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
 
       // Check if merchant should be flagged (less than 10 transactions for 7 consecutive days)
       await checkAndFlagMerchant(id);
 
       res.status(201).json({
-        message: "Transaction recorded successfully",
-        transaction,
+        message: "Transaction saved",
+        transaction: updated,
       });
     } catch (error) {
-      if (error.code === 11000) {
-        return res.status(400).json({
-          message: "Transaction already recorded for this date",
-        });
-      }
       console.error("Record transaction error:", error);
       res.status(500).json({ message: "Failed to record transaction" });
+    }
+  }
+);
+
+// Monthly total for a merchant (count only)
+router.get(
+  "/:id/transactions/monthly-total",
+  authenticateToken,
+  requireRoles(["staff", "admin"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { year, month } = req.query; // month: 1-12
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ message: "Invalid merchant id" });
+      }
+      const y = parseInt(year, 10);
+      const m = parseInt(month, 10);
+      if (!y || !m || m < 1 || m > 12) {
+        return res
+          .status(400)
+          .json({ message: "year and month (1-12) are required" });
+      }
+
+      const start = new Date(Date.UTC(y, m - 1, 1));
+      const end = new Date(Date.UTC(y, m, 1));
+
+      const agg = await MerchantTransaction.aggregate([
+        {
+          $match: {
+            merchantId: new mongoose.Types.ObjectId(id),
+            transactionDate: { $gte: start, $lt: end },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalCount: { $sum: "$transactionCount" },
+            daysRecorded: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const result = agg[0] || { totalCount: 0, daysRecorded: 0 };
+      res.json({ year: y, month: m, ...result });
+    } catch (error) {
+      console.error("Monthly total error:", error);
+      res.status(500).json({ message: "Failed to compute monthly total" });
     }
   }
 );
@@ -309,7 +363,7 @@ router.post(
 router.get("/:id/transactions", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { startDate, endDate, page = 1, limit = 30 } = req.query;
+    const { startDate, endDate, page = 1, limit = 15 } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid merchant id" });
@@ -321,7 +375,9 @@ router.get("/:id/transactions", authenticateToken, async (req, res) => {
       return res.status(404).json({ message: "Merchant not found" });
     }
 
-    const isOwnProfile = merchant.userId.toString() === req.user._id.toString();
+    // Staff/Admin can view any merchant transactions; merchants can view their own
+    const isOwnProfile =
+      merchant.userId && merchant.userId.toString() === req.user._id.toString();
     const canView = isOwnProfile || ["staff", "admin"].includes(req.user.role);
 
     if (!canView) {
@@ -359,6 +415,62 @@ router.get("/:id/transactions", authenticateToken, async (req, res) => {
   }
 });
 
+// List all transactions across merchants (Staff/Admin)
+// Use a non-param path to avoid conflict with "/:id" route above
+router.get(
+  "/all-transactions",
+  authenticateToken,
+  requireRoles(["staff", "admin"]),
+  async (req, res) => {
+    try {
+      const {
+        startDate,
+        endDate,
+        page = 1,
+        limit = 50,
+        merchantId,
+        username,
+      } = req.query;
+
+      const query = {};
+      if (merchantId && mongoose.Types.ObjectId.isValid(merchantId)) {
+        query.merchantId = merchantId;
+      } else if (username) {
+        const m = await Merchant.findOne({ username: username.trim() });
+        if (m) query.merchantId = m._id;
+      }
+
+      if (startDate || endDate) {
+        query.transactionDate = {};
+        if (startDate) query.transactionDate.$gte = new Date(startDate);
+        if (endDate) query.transactionDate.$lte = new Date(endDate);
+      }
+
+      const transactions = await MerchantTransaction.find(query)
+        .populate("merchantId", "username businessName")
+        .populate("recordedBy", "fullName email username")
+        .sort({ transactionDate: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+
+      const total = await MerchantTransaction.countDocuments(query);
+
+      res.json({
+        transactions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error("List all transactions error:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  }
+);
+
 // Get flagged merchants (Admin only)
 router.get(
   "/flagged",
@@ -366,11 +478,26 @@ router.get(
   requireRoles(["admin"]),
   async (req, res) => {
     try {
-      const flaggedMerchants = await Merchant.find({ status: "flagged" })
-        .populate("userId", "fullName email")
-        .sort({ flaggedAt: -1 });
+      const { page = 1, limit = 20 } = req.query;
+      const query = { status: "flagged" };
 
-      res.json({ merchants: flaggedMerchants });
+      const merchants = await Merchant.find(query)
+        .populate("userId", "fullName email")
+        .sort({ flaggedAt: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+
+      const total = await Merchant.countDocuments(query);
+
+      res.json({
+        merchants,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      });
     } catch (error) {
       console.error("Get flagged merchants error:", error);
       res.status(500).json({ message: "Failed to fetch flagged merchants" });

@@ -19,6 +19,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import logo from "../../assets/logo.png";
 // removed unused toast import
 
 const DashboardLayout = ({ children, userRole }) => {
@@ -164,8 +165,12 @@ const DashboardLayout = ({ children, userRole }) => {
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <span className="text-primary font-bold">V</span>
+              <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center">
+                <img
+                  src={logo}
+                  alt="V-Monie Logo"
+                  className="h-full w-full object-contain"
+                />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white font-lota">
                 Vmonie

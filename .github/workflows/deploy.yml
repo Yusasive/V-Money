@@ -1,0 +1,43 @@
+name: Deploy React App to Hostinger
+
+on:
+  push:
+    branches:
+      - main   # Deploy when you push to main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # 2. Setup Node.js (match your Node version, e.g. 18)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # 3. Install dependencies and build React app
+      - name: Install and Build
+        run: |
+          npm install
+          npm run build
+        env:
+          # Inject environment variables from GitHub Secrets
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+          REACT_APP_ENV: ${{ secrets.REACT_APP_ENV }}
+          # Add more if you need
+          # REACT_APP_SOME_KEY: ${{ secrets.REACT_APP_SOME_KEY }}
+
+      # 4. Deploy build folder to Hostinger via FTP
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./build
+          server-dir: public_html

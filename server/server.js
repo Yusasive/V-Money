@@ -38,6 +38,9 @@ connectDB().catch((err) => {
 
 const app = express();
 
+// Trust proxy - needed for rate limiting behind a proxy (like on Render.com)
+app.set("trust proxy", 1);
+
 // Middleware
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));

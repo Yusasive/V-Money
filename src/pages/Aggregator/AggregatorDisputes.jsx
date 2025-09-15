@@ -118,7 +118,7 @@ const AggregatorDisputes = () => {
               <div className="space-y-4">
                 {disputes.map((dispute, index) => (
                   <motion.div
-                    key={dispute.id}
+                    key={dispute._id || dispute.id || index}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
@@ -248,7 +248,7 @@ const AggregatorDisputes = () => {
                   <div className="space-y-3 max-h-40 overflow-y-auto">
                     {selectedDispute.responses.map((response, index) => (
                       <div
-                        key={index}
+                        key={response._id || response.id || `response-${index}`}
                         className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
                       >
                         <p className="text-gray-900 dark:text-white text-sm">

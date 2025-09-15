@@ -375,7 +375,7 @@ router.post(
       }
 
       // Generate reset token
-      const resetToken = user.generateSecureToken();
+      const resetToken = crypto.randomBytes(32).toString("hex");
       user.passwordResetToken = resetToken;
       user.passwordResetExpires = Date.now() + 3600000; // 1 hour
       await user.save();
