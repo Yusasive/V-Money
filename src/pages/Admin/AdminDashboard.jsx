@@ -6,10 +6,9 @@ import {
   CheckSquare,
   AlertTriangle,
   Store,
-  BarChart3,
   TrendingUp,
 } from "lucide-react";
-import { authApi, analyticsApi } from "../../api/client";
+import { analyticsApi } from "../../api/client";
 import DashboardLayout from "../../components/Layout/DashboardLayout";
 import PageHeader from "../../components/UI/PageHeader";
 import StatsCard from "../../components/UI/StatsCard";
@@ -25,7 +24,6 @@ import RequireRole from "../../components/Auth/RequireRole";
 import toast from "react-hot-toast";
 
 const AdminDashboard = () => {
-  const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
     users: { total: 0, pending: 0, approved: 0 },
     tasks: { total: 0, completed: 0, pending: 0 },
@@ -38,8 +36,7 @@ const AdminDashboard = () => {
 
   const fetchUserData = useCallback(async () => {
     try {
-      const response = await authApi.me();
-      setUser(response.data.user);
+      // const response = await authApi.me(); // removed unused variable
     } catch (error) {
       localStorage.removeItem("authToken");
       navigate("/admin/login");
@@ -166,7 +163,11 @@ const DashboardHome = ({ stats }) => {
         subtitle="Complete system overview and management"
         icon={TrendingUp}
         actions={
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
             Refresh
           </Button>
         }

@@ -16,7 +16,6 @@ import {
   analyticsApi,
   tasksApi,
   disputesApi,
-  merchantsApi,
   usersApi,
 } from "../../api/client";
 import LoadingSpinner from "../../components/UI/LoadingSpinner";

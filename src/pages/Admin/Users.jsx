@@ -74,11 +74,6 @@ const Users = () => {
     fetchUsers(1);
   };
 
-  const confirmReason = (label) => {
-    // This function no longer uses blocking prompt. Use modal flow instead.
-    return "";
-  };
-
   const doAction = async (id, action) => {
     try {
       setLoading(true);

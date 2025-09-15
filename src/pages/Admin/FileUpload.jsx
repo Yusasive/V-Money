@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Upload } from "lucide-react";
 import PageHeader from "../../components/UI/PageHeader";
-import Button from "../../components/UI/Button";
 import { uploadApi } from "../../api/client";
 
 const FileUpload = () => {
@@ -85,10 +84,15 @@ const FileUpload = () => {
 
           {files.length > 0 && (
             <div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Selected Files:</h4>
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                Selected Files:
+              </h4>
               <ul className="space-y-1">
                 {files.map((file, index) => (
-                  <li key={index} className="text-sm text-gray-600 dark:text-gray-400">
+                  <li
+                    key={index}
+                    className="text-sm text-gray-600 dark:text-gray-400"
+                  >
                     {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                   </li>
                 ))}
@@ -121,10 +125,15 @@ const FileUpload = () => {
       {/* Uploaded Files */}
       {uploadedFiles.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Uploaded Files</h3>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            Uploaded Files
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {uploadedFiles.map((file, index) => (
-              <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
+              <div
+                key={index}
+                className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-700"
+              >
                 <div className="mb-2">
                   {file.url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                     <img
@@ -134,7 +143,9 @@ const FileUpload = () => {
                     />
                   ) : (
                     <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
-                      <span className="text-gray-500 dark:text-gray-400">📄</span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        📄
+                      </span>
                     </div>
                   )}
                 </div>

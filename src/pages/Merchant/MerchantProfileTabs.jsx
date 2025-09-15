@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import {
-  FiEdit,
-  FiLock,
-  FiUser,
-  FiBriefcase,
-  FiFileText,
-  FiEye,
-  FiDownload,
-} from "react-icons/fi";
+import { FiLock, FiUser, FiBriefcase, FiFileText } from "react-icons/fi";
 
 // Document Card Component - SIMPLIFIED TO STOP ERRORS
 const DocumentCard = ({ title, url, alt }) => {
@@ -27,166 +19,6 @@ const DocumentCard = ({ title, url, alt }) => {
           Document uploaded
         </span>
       </div>
-    </div>
-  );
-};
-
-// ORIGINAL COMPONENT (commented out to stop errors)
-const DocumentCardOriginal = ({ title, url, alt }) => {
-  const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
-  const [networkTest, setNetworkTest] = useState(null);
-
-  // Extract URL from object or use string directly
-  const getImageUrl = (urlData) => {
-    if (!urlData) return null;
-
-    let extractedUrl = null;
-
-    // If it's already a clean string URL, return as is
-    if (typeof urlData === "string" && !urlData.startsWith("{")) {
-      extractedUrl = urlData;
-    }
-    // If it's an object, extract the URL
-    else if (typeof urlData === "object" && urlData.url) {
-      extractedUrl = urlData.url;
-    }
-    // If it's a JSON string, try to parse it
-    else if (typeof urlData === "string" && urlData.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(urlData);
-        extractedUrl = parsed.url || null;
-      } catch (e) {
-        console.error("Failed to parse URL data:", e);
-        return null;
-      }
-    }
-
-    if (!extractedUrl) return null;
-
-    // Fix double folder issue: v-money/v-money/ -> v-money/
-    if (extractedUrl.includes("/v-money/v-money/")) {
-      extractedUrl = extractedUrl.replace("/v-money/v-money/", "/v-money/");
-    }
-
-    // Clean up the URL if needed (remove double extensions)
-    if (extractedUrl.includes(".png.png")) {
-      extractedUrl = extractedUrl.replace(".png.png", ".png");
-    }
-    if (extractedUrl.includes(".jpg.jpg")) {
-      extractedUrl = extractedUrl.replace(".jpg.jpg", ".jpg");
-    }
-    if (extractedUrl.includes(".jpeg.jpeg")) {
-      extractedUrl = extractedUrl.replace(".jpeg.jpeg", ".jpeg");
-    }
-
-    return extractedUrl;
-  };
-
-  const imageUrl = getImageUrl(url);
-
-  // TEMPORARY: Disable image loading to stop 404 errors
-  const shouldShowImage = false; // Set to true when images are fixed
-
-  const handleImageLoad = () => {
-    setImageLoading(false);
-    setImageError(false);
-  };
-
-  const handleImageError = (e) => {
-    // Silently handle errors for now
-    setImageLoading(false);
-    setImageError(true);
-  };
-
-  const openImageInNewTab = () => {
-    if (imageUrl && !imageError) {
-      window.open(imageUrl, "_blank");
-    }
-  };
-
-  // Test network connectivity to the image URL
-  const testNetworkAccess = async () => {
-    if (!imageUrl) return;
-
-    setNetworkTest("testing");
-    try {
-      const response = await fetch(imageUrl, { method: "HEAD" });
-      if (response.ok) {
-        setNetworkTest("success");
-      } else {
-        setNetworkTest(`failed: ${response.status} ${response.statusText}`);
-      }
-    } catch (error) {
-      setNetworkTest(`error: ${error.message}`);
-    }
-  };
-
-  return (
-    <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 sm:p-4">
-      <h4 className="font-medium text-gray-900 dark:text-white mb-2 text-sm sm:text-base">
-        {title}
-      </h4>
-      {imageUrl ? (
-        <div className="relative">
-          {imageLoading && (
-            <div className="w-full h-24 sm:h-32 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            </div>
-          )}
-          {!imageError ? (
-            <div className="relative group">
-              <img
-                src={imageUrl}
-                alt={alt}
-                className={`w-full h-24 sm:h-32 object-cover rounded-md cursor-pointer transition-opacity ${
-                  imageLoading ? "opacity-0 absolute" : "opacity-100"
-                }`}
-                onLoad={handleImageLoad}
-                onError={handleImageError}
-                onClick={openImageInNewTab}
-              />
-              {!imageLoading && (
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={openImageInNewTab}
-                      className="bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-800 p-2 rounded-full transition-all duration-200"
-                      title="View full size"
-                    >
-                      <FiEye className="w-4 h-4" />
-                    </button>
-                    <a
-                      href={imageUrl}
-                      download
-                      className="bg-white bg-opacity-90 hover:bg-opacity-100 text-gray-800 p-2 rounded-full transition-all duration-200"
-                      title="Download"
-                    >
-                      <FiDownload className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="w-full h-24 sm:h-32 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md flex flex-col items-center justify-center p-2">
-              <div className="text-4xl mb-1">📄</div>
-              <span className="text-gray-600 dark:text-gray-400 text-xs text-center mb-2">
-                {title}
-              </span>
-              <span className="text-red-500 dark:text-red-400 text-xs text-center">
-                Image not available
-              </span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="w-full h-24 sm:h-32 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center">
-          <span className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm text-center px-2">
-            No document uploaded
-          </span>
-        </div>
-      )}
     </div>
   );
 };
@@ -899,10 +731,7 @@ export default function MerchantProfileTabs({
                         extractedUrl = urlData;
                       } else if (typeof urlData === "object" && urlData.url) {
                         extractedUrl = urlData.url;
-                      } else if (
-                        typeof urlData === "string" &&
-                        urlData.startsWith("{")
-                      ) {
+                      } else if (typeof urlData === "string" && urlData.startsWith("{")) {
                         try {
                           const parsed = JSON.parse(urlData);
                           extractedUrl = parsed.url || null;

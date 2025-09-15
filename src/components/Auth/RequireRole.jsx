@@ -3,18 +3,15 @@ import { authApi } from "../../api/client";
 import LoadingSpinner from "../UI/LoadingSpinner";
 
 const RequireRole = ({ children, roles = [], fallback = null }) => {
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
-  // src/components/Auth/RequireRole.jsx
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await authApi.me();
         console.log("RequireRole me():", response.data); // TEMP
         const currentUser = response.data?.user;
-        setUser(currentUser);
         setHasAccess(
           currentUser
             ? roles.length
