@@ -51,7 +51,7 @@ const merchantSchema = new mongoose.Schema(
 );
 
 // Indexes for better query performance
-merchantSchema.index({ userId: 1 });
+merchantSchema.index({ userId: 1 }, { unique: true, sparse: true });
 merchantSchema.index({ username: 1 });
 merchantSchema.index({ email: 1 });
 merchantSchema.index({ status: 1 });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Users, Search, Calendar } from "lucide-react";
+import { Pen } from "lucide-react";
 import PageHeader from "../../components/UI/PageHeader";
 import Button from "../../components/UI/Button";
 import Badge from "../../components/UI/Badge";
@@ -10,6 +11,10 @@ import { merchantsApi, usersApi } from "../../api/client";
 import { toast } from "react-hot-toast";
 
 const Merchants = () => {
+  const [showTxEditModal, setShowTxEditModal] = useState(false);
+  const [editTx, setEditTx] = useState(null);
+  const [editTxCount, setEditTxCount] = useState("");
+  const [editTxNotes, setEditTxNotes] = useState("");
   const [merchantId, setMerchantId] = useState("");
   const [merchant, setMerchant] = useState(null);
   const [assignees, setAssignees] = useState([]);
@@ -704,6 +709,55 @@ const Merchants = () => {
                     >
                       Apply
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          // Fetch ALL transactions for this merchant with current date filter
+                          let page = 1;
+                          let allTx = [];
+                          let done = false;
+                          while (!done) {
+                            const res = await merchantsApi.getTransactions(
+                              merchant._id,
+                              {
+                                page,
+                                limit: 100,
+                                startDate: txFilter.startDate || undefined,
+                                endDate: txFilter.endDate || undefined,
+                              }
+                            );
+                            const tx = res.data?.transactions || [];
+                            allTx = allTx.concat(tx);
+                            if (
+                              !res.data?.pagination ||
+                              page >= res.data.pagination.pages
+                            )
+                              done = true;
+                            else page++;
+                          }
+                          if (!allTx.length) {
+                            toast.error("No transactions to export");
+                            return;
+                          }
+                          const csv = transactionsToCSV(allTx);
+                          const blob = new Blob([csv], { type: "text/csv" });
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `transactions_${merchant.username}_${Date.now()}.csv`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          window.URL.revokeObjectURL(url);
+                        } catch (err) {
+                          toast.error("Failed to export CSV");
+                        }
+                      }}
+                    >
+                      Download CSV
+                    </Button>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
@@ -734,36 +788,100 @@ const Merchants = () => {
                     No transactions recorded.
                   </div>
                 ) : (
-                  <div className="space-y-2 text-sm text-gray-700 dark:text-gray-200">
-                    {merchantTransactions.map((t) => (
-                      <div
-                        key={t._id}
-                        className="flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-800/50"
-                      >
-                        <div>
-                          <div className="font-medium">
-                            {new Date(t.transactionDate).toLocaleDateString()}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            Recorded by{" "}
-                            {t.recordedBy?.fullName ||
-                              t.recordedBy?.username ||
-                              "-"}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-base font-semibold">
-                            {t.transactionCount}
-                          </div>
-                          {t.notes && (
-                            <div className="text-xs text-gray-500 max-w-xs truncate">
-                              {t.notes}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+        <div className="space-y-2 text-sm text-gray-700 dark:text-gray-200">
+          <>
+            {merchantTransactions.map((t) => (
+              <div
+                key={t._id}
+                className="flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-800/50"
+              >
+                <div>
+                  <div className="font-medium">
+                    {new Date(t.transactionDate).toLocaleDateString()}
                   </div>
+                  <div className="text-gray-500 text-xs">
+                    Recorded by {t.recordedBy?.fullName || t.recordedBy?.username || "-"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-base font-semibold">{t.transactionCount}</div>
+                  {t.notes && (
+                    <div className="text-xs text-gray-500 max-w-xs truncate">{t.notes}</div>
+                  )}
+                  <button
+                    className="ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onClick={() => {
+                      setEditTx(t);
+                      setEditTxCount(t.transactionCount);
+                      setEditTxNotes(t.notes || "");
+                      setShowTxEditModal(true);
+                    }}
+                    aria-label="Edit Transaction"
+                  >
+                    <Pen className="h-4 w-4 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {/* Edit Transaction Modal */}
+            <Modal
+              isOpen={showTxEditModal}
+              onClose={() => setShowTxEditModal(false)}
+              title="Edit Transaction"
+              size="md"
+            >
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!editTx) return;
+                  try {
+                    await merchantsApi.updateTransaction(editTx._id, {
+                      transactionCount: editTxCount,
+                      notes: editTxNotes,
+                    });
+                    toast.success("Transaction updated successfully");
+                    setShowTxEditModal(false);
+                    setEditTx(null);
+                    fetchTransactions(merchantId);
+                  } catch (err) {
+                    toast.error(err?.response?.data?.message || "Failed to update transaction");
+                  }
+                }}
+                className="space-y-6"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Transaction Count</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editTxCount}
+                    onChange={(e) => setEditTxCount(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Remarks</label>
+                  <textarea
+                    value={editTxNotes}
+                    onChange={(e) => setEditTxNotes(e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Optional remarks about the transaction day"
+                  />
+                </div>
+                <div className="flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => setShowTxEditModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary">
+                    Save
+                  </Button>
+                </div>
+              </form>
+            </Modal>
+          </>
+        </div>
                 )}
 
                 <div className="flex items-center justify-between mt-3 text-sm">
@@ -984,5 +1102,27 @@ const Merchants = () => {
     </div>
   );
 };
+
+// CSV utility
+function transactionsToCSV(transactions) {
+  if (!transactions.length) return "";
+  const header = [
+    "Date",
+    "Transaction Count",
+    "Notes",
+    "Recorded By Name",
+    "Recorded By Email",
+    "Recorded By Username",
+  ];
+  const rows = transactions.map((t) => [
+    new Date(t.transactionDate).toLocaleDateString(),
+    t.transactionCount,
+    t.notes ? '"' + String(t.notes).replace(/"/g, '""') + '"' : "",
+    t.recordedBy?.fullName || "",
+    t.recordedBy?.email || "",
+    t.recordedBy?.username || "",
+  ]);
+  return [header, ...rows].map((r) => r.join(",")).join("\r\n");
+}
 
 export default Merchants;

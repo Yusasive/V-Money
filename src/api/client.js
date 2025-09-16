@@ -52,7 +52,8 @@ window.XMLHttpRequest = function () {
 
 // Centralized API base URL with smart defaulting
 function resolveApiBaseUrl() {
-  const envUrl = process.env.REACT_APP_API_URL;
+  const envUrl =
+    process.env.REACT_APP_API_URL || "https://vmonie-server.onrender.com/api";
   if (envUrl) return envUrl;
 
   try {
@@ -62,14 +63,14 @@ function resolveApiBaseUrl() {
       // const port = window.location.port; // not used; retained comment for potential future debugging
 
       if (isLocal) {
-        return `http://localhost:5000/api`;
+        return `https://vmonie-server.onrender.com/api`;
       }
 
       // For production, use relative path or current origin
       return `${window.location.origin}/api`;
     }
   } catch {}
-  return "http://localhost:5000/api";
+  return "https://vmonie-server.onrender.com/api";
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
@@ -455,6 +456,8 @@ export const merchantsApi = {
   delete: (id) => api.delete(`/merchants/${id}`),
   addTransaction: (id, transactionData) =>
     api.post(`/merchants/${id}/transactions`, transactionData),
+  updateTransaction: (transactionId, data) =>
+    api.patch(`/merchants/transactions/${transactionId}`, data),
   getTransactions: (id, params = {}) =>
     api.get(`/merchants/${id}/transactions`, { params }),
   allTransactions: (params = {}) =>

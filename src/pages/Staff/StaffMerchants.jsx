@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Store, Plus, TrendingUp, Search, Calendar } from "lucide-react";
+import { Pen } from "lucide-react";
 import DashboardLayout from "../../components/Layout/DashboardLayout";
 import PageHeader from "../../components/UI/PageHeader";
 import Button from "../../components/UI/Button";
 import Badge from "../../components/UI/Badge";
 import Modal from "../../components/UI/Modal";
-import { merchantsApi, usersApi } from "../../api/client";
+import { merchantsApi } from "../../api/client";
 import LoadingSpinner from "../../components/UI/LoadingSpinner";
 import toast from "react-hot-toast";
 
+import { useAuth } from "../../contexts/AuthContext"; // adjust path as needed
+
 const StaffMerchants = () => {
+  const { user } = useAuth(); // Get current user from context
   const [merchants, setMerchants] = useState([]);
   const [merchantsPagination, setMerchantsPagination] = useState({
     page: 1,
@@ -18,11 +22,18 @@ const StaffMerchants = () => {
     total: 0,
     limit: 20,
   });
-  const [users, setUsers] = useState([]);
+  // Remove users state, staff can only link merchant to themselves
   const [loading, setLoading] = useState(true);
+  // const [users, setUsers] = useState([]);
   const [selectedMerchant, setSelectedMerchant] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showTxEditModal, setShowTxEditModal] = useState(false);
+  const [editTx, setEditTx] = useState(null);
+  const [editTxCount, setEditTxCount] = useState("");
+  const [editTxNotes, setEditTxNotes] = useState("");
+  const [editUsername, setEditUsername] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,6 +58,28 @@ const StaffMerchants = () => {
     limit: 15,
   });
   const [txnFilters, setTxnFilters] = useState({ startDate: "", endDate: "" });
+
+  // CSV utility
+  function transactionsToCSV(transactions) {
+    if (!transactions.length) return "";
+    const header = [
+      "Date",
+      "Transaction Count",
+      "Notes",
+      "Recorded By Name",
+      "Recorded By Email",
+      "Recorded By Username",
+    ];
+    const rows = transactions.map((t) => [
+      new Date(t.transactionDate).toLocaleDateString(),
+      t.transactionCount,
+      t.notes ? '"' + String(t.notes).replace(/"/g, '""') + '"' : "",
+      t.recordedBy?.fullName || "",
+      t.recordedBy?.email || "",
+      t.recordedBy?.username || "",
+    ]);
+    return [header, ...rows].map((r) => r.join(",")).join("\r\n");
+  }
 
   // Fetch transactions for selected merchant
   const fetchTransactions = async (page = 1) => {
@@ -110,28 +143,17 @@ const StaffMerchants = () => {
 
   useEffect(() => {
     fetchMerchants({ page: 1, search: "" });
-    fetchUsers();
   }, [fetchMerchants]);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await usersApi.list({
-        status: "approved",
-        limit: 100,
-      });
-      setUsers(response.data.users || []);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-    }
-  };
 
   const handleCreateMerchant = async (e) => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      // Only send username and optional userId
-      const payload = { username: merchantForm.username.trim() };
-      if (merchantForm.userId) payload.userId = merchantForm.userId;
+      // Always link merchant to current staff user
+      const payload = {
+        username: merchantForm.username.trim(),
+        userId: user._id,
+      };
       await merchantsApi.create(payload);
       toast.success("Merchant created successfully");
       setShowCreateModal(false);
@@ -296,6 +318,17 @@ const StaffMerchants = () => {
                           View Details
                         </Button>
                         <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedMerchant(merchant);
+                            setEditUsername(merchant.username);
+                            setShowEditModal(true);
+                          }}
+                        >
+                          Edit Username
+                        </Button>
+                        <Button
                           variant="primary"
                           size="sm"
                           onClick={() => {
@@ -363,27 +396,13 @@ const StaffMerchants = () => {
           size="xl"
         >
           <form onSubmit={handleCreateMerchant} className="space-y-6">
-            {/* User Selection (optional) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Link to User Account (optional)
-              </label>
-              <select
-                value={merchantForm.userId}
-                onChange={(e) =>
-                  setMerchantForm({ ...merchantForm, userId: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="">Select user account</option>
-                {users.map((user) => (
-                  <option key={user._id} value={user._id}>
-                    {user.fullName} ({user.email}) - {user.role}
-                  </option>
-                ))}
-              </select>
+            {/* Info: Staff can only link merchant to themselves */}
+            <div className="mb-2 text-sm text-gray-600 dark:text-gray-400">
+              This merchant will be linked to your staff account:{" "}
+              <span className="font-semibold">
+                {user?.fullName} ({user?.email})
+              </span>
             </div>
-
             {/* Basic Info */}
             <div className="grid grid-cols-1 gap-4">
               <div>
@@ -503,6 +522,65 @@ const StaffMerchants = () => {
         </Modal>
 
         {/* Merchant Detail Modal */}
+        {/* Edit Username Modal */}
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title="Edit Merchant Username"
+          size="md"
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!editUsername.trim()) {
+                toast.error("Username cannot be empty");
+                return;
+              }
+              try {
+                await merchantsApi.update(selectedMerchant._id, {
+                  username: editUsername.trim(),
+                });
+                toast.success("Username updated successfully");
+                setShowEditModal(false);
+                setEditUsername("");
+                fetchMerchants({
+                  page: merchantsPagination.page,
+                  search: searchTerm,
+                });
+              } catch (err) {
+                toast.error(
+                  err?.response?.data?.message || "Failed to update username"
+                );
+              }
+            }}
+            className="space-y-6"
+          >
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                New Username
+              </label>
+              <input
+                type="text"
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary">
+                Save
+              </Button>
+            </div>
+          </form>
+        </Modal>
         <Modal
           isOpen={!!selectedMerchant && !showTransactionModal}
           onClose={() => setSelectedMerchant(null)}
@@ -612,7 +690,7 @@ const StaffMerchants = () => {
                                 "-"}
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="flex items-center gap-2">
                             <div className="text-base font-semibold">
                               {t.transactionCount}
                             </div>
@@ -621,6 +699,18 @@ const StaffMerchants = () => {
                                 {t.notes}
                               </div>
                             )}
+                            <button
+                              className="ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+                              onClick={() => {
+                                setEditTx(t);
+                                setEditTxCount(t.transactionCount);
+                                setEditTxNotes(t.notes || "");
+                                setShowTxEditModal(true);
+                              }}
+                              aria-label="Edit Transaction"
+                            >
+                              <Pen className="h-4 w-4 text-gray-500" />
+                            </button>
                           </div>
                         </li>
                       ))}
@@ -659,21 +749,146 @@ const StaffMerchants = () => {
                   </div>
                 </div>
               </div>
+              {/* Edit Transaction Modal */}
+              <Modal
+                isOpen={showTxEditModal}
+                onClose={() => setShowTxEditModal(false)}
+                title="Edit Transaction"
+                size="md"
+              >
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!editTx) return;
+                    try {
+                      await merchantsApi.updateTransaction(editTx._id, {
+                        transactionCount: editTxCount,
+                        notes: editTxNotes,
+                      });
+                      toast.success("Transaction updated successfully");
+                      setShowTxEditModal(false);
+                      setEditTx(null);
+                      fetchTransactions(txnPagination.page);
+                    } catch (err) {
+                      toast.error(
+                        err?.response?.data?.message ||
+                          "Failed to update transaction"
+                      );
+                    }
+                  }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Transaction Count
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editTxCount}
+                      onChange={(e) => setEditTxCount(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Remarks
+                    </label>
+                    <textarea
+                      value={editTxNotes}
+                      onChange={(e) => setEditTxNotes(e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="Optional remarks about the transaction day"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowTxEditModal(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" variant="primary">
+                      Save
+                    </Button>
+                  </div>
+                </form>
+              </Modal>
 
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedMerchant(null)}
-                >
-                  Close
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => setShowTransactionModal(true)}
-                  icon={TrendingUp}
-                >
-                  Add Transaction
-                </Button>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-gray-900 dark:text-white">
+                  Transactions
+                </h4>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      selectedMerchant &&
+                      fetchTransactions(selectedMerchant._id, {
+                        page: 1,
+                        startDate: txnFilters.startDate || undefined,
+                        endDate: txnFilters.endDate || undefined,
+                      })
+                    }
+                    icon={Calendar}
+                  >
+                    Apply
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        if (!selectedMerchant) return;
+                        // Fetch ALL transactions for this merchant with current date filter
+                        let page = 1;
+                        let allTx = [];
+                        let done = false;
+                        while (!done) {
+                          const res = await merchantsApi.getTransactions(
+                            selectedMerchant._id,
+                            {
+                              page,
+                              limit: 100,
+                              startDate: txnFilters.startDate || undefined,
+                              endDate: txnFilters.endDate || undefined,
+                            }
+                          );
+                          const tx = res.data?.transactions || [];
+                          allTx = allTx.concat(tx);
+                          if (
+                            !res.data?.pagination ||
+                            page >= res.data.pagination.pages
+                          )
+                            done = true;
+                          else page++;
+                        }
+                        if (!allTx.length) {
+                          toast.error("No transactions to export");
+                          return;
+                        }
+                        const csv = transactionsToCSV(allTx);
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `transactions_${selectedMerchant.username}_${Date.now()}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                      } catch (err) {
+                        toast.error("Failed to export CSV");
+                      }
+                    }}
+                  >
+                    Download CSV
+                  </Button>
+                </div>
               </div>
             </div>
           )}

@@ -13,7 +13,7 @@ router.post(
   requireRoles(["staff", "admin"]),
   async (req, res) => {
     try {
-      const { username } = req.body;
+      const { username, userId } = req.body;
 
       if (!username || typeof username !== "string" || !username.trim()) {
         return res.status(400).json({ message: "Username is required" });
@@ -34,8 +34,12 @@ router.post(
         return res.status(400).json({ message: "Merchant already exists" });
       }
 
-      // Create minimal merchant
-      const merchant = new Merchant({ username: uname });
+      // Create merchant and link to user if provided
+      const merchantData = { username: uname };
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        merchantData.userId = userId;
+      }
+      const merchant = new Merchant(merchantData);
       await merchant.save();
 
       res.status(201).json({
@@ -57,7 +61,7 @@ router.get(
   async (req, res) => {
     try {
       const { page = 1, limit = 20, search } = req.query;
-      const query = {};
+      let query = {};
       if (search) {
         query.$or = [
           { businessName: { $regex: search, $options: "i" } },
@@ -66,6 +70,11 @@ router.get(
           { firstName: { $regex: search, $options: "i" } },
           { lastName: { $regex: search, $options: "i" } },
         ];
+      }
+
+      // Restrict staff to only merchants they created or are linked to
+      if (req.user.role === "staff") {
+        query.userId = req.user._id;
       }
 
       const merchants = await Merchant.find(query)
@@ -553,5 +562,53 @@ async function checkAndFlagMerchant(merchantId) {
     console.error("Error checking merchant flag status:", error);
   }
 }
+
+// Update a transaction (Staff/Admin)
+router.patch(
+  "/transactions/:transactionId",
+  authenticateToken,
+  requireRoles(["staff", "admin"]),
+  async (req, res) => {
+    try {
+      const { transactionId } = req.params;
+      const { transactionCount, notes } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+        return res.status(400).json({ message: "Invalid transaction id" });
+      }
+
+      const updates = {};
+      if (transactionCount !== undefined) {
+        const count = parseInt(transactionCount, 10);
+        if (Number.isNaN(count) || count < 0) {
+          return res
+            .status(400)
+            .json({
+              message: "transactionCount must be a non-negative integer",
+            });
+        }
+        updates.transactionCount = count;
+      }
+      if (notes !== undefined) {
+        updates.notes = notes;
+      }
+
+      const transaction = await MerchantTransaction.findByIdAndUpdate(
+        transactionId,
+        { $set: updates },
+        { new: true, runValidators: true }
+      );
+
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      res.json({ message: "Transaction updated successfully", transaction });
+    } catch (error) {
+      console.error("Update transaction error:", error);
+      res.status(500).json({ message: "Failed to update transaction" });
+    }
+  }
+);
 
 module.exports = router;

@@ -13,7 +13,9 @@ const corsOptions = {
     "http://localhost:3000",
     "https://vmonieweb.com",
     "https://www.vmonieweb.com",
-    process.env.FRONTEND_URL
+    "https://admin.vmonieweb.com",
+    "https://www.admin.vmonieweb.com",
+    process.env.FRONTEND_URL,
   ].filter(Boolean),
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
